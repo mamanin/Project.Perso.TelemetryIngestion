@@ -14,9 +14,5 @@ Where:
   - `🧹 chore` for maintenance tasks
   - `🧪 test` for adding or updating tests
   - `📝 docs` for documentation changes
-- `[scope]` component that specifies the buisness project affected by the changes, for example:
-  - `guild` for guild-related changes
-  - `tracker` for tracker-related changes
-  - `events` for event-related changes
-  - `tech` for technical changes that do not affect business logic
+- `[scope]` component that specifies the buisness project affected by the changes, for example: [`bronze`, `silver`, `gold`, `core`].
 - `[short description]` is a brief summary of the changes made in the pull request, it must be concise and descriptive.
