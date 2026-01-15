@@ -42,8 +42,10 @@ var cache = builder
 // Add Golang workers
 var bronze = builder
     .AddGolangApp("bronze", "../../src/Service.Ingestion/cmd/bronze-worker")
+    .WithReference(eventHub)
     .WithReference(raw)
     .WithReference(metrics)
+    .WithReference(blob)
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 var silver = builder
@@ -57,18 +59,18 @@ var silver = builder
 
 var gold = builder
     .AddGolangApp("gold", "../../src/Service.Ingestion/cmd/gold-worker")
-    .WithReference(kusto)
+    .WithReference(eventHub)
     .WithReference(data)
+    .WithReference(kusto)
+    .WithReference(blob)
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 // Add test sender
 _ = builder
-    .AddGolangApp("test-sender", "../../src/Service.Ingestion/cmd/test-sender")
+    .AddGolangApp("test-sender", "../../src/Service.Ingestion/cmd/telemetry-senders/legacy-sender")
     .WithReference(eventHub)
-    .WithReference(metrics)
-    .WithReference(bronze)
-    .WithReference(silver)
-    .WithReference(gold);
+    .WithReference(raw)
+    .WithOtlpExporter(OtlpProtocol.Grpc);
 
 await builder
     .Build()

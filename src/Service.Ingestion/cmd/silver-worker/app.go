@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
+	"service.ingestion/external/cache"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/observability/logger"
 	"service.ingestion/external/storage"
@@ -20,7 +20,8 @@ import (
 // App represents the entire application with all its dependencies.
 type App struct {
 	logger       logger.Logger
-	orchestrator processor.Processor
+	orchestrator *processor.Processor
+	redis        *cache.Redis
 }
 
 // NewApp creates and initializes a new App instance with all dependencies.
@@ -47,6 +48,8 @@ func NewApp(ctx context.Context) (*App, error) {
 	batchSize := 200
 	workers := 4
 
+	app.initializeRedis(workers)
+
 	if err = app.initializeOrchestrator(batchSize, workers); err != nil {
 		return nil, fmt.Errorf("failed to initialize processor: %w", err)
 	}
@@ -56,7 +59,11 @@ func NewApp(ctx context.Context) (*App, error) {
 
 // Start starts all application services.
 func (a *App) Start(ctx context.Context) error {
+	a.logger.Info("Starting silver worker...")
+
 	a.orchestrator.Start(ctx)
+
+	a.logger.Info("Silver worker started successfully")
 	return nil
 }
 
@@ -71,6 +78,10 @@ func (a *App) Stop(ctx context.Context) {
 		a.logger.Error(err, "Error shutting down subscriber: %v", err)
 	}
 
+	if err := a.redis.Close(); err != nil {
+		a.logger.Error(err, "Error closing redis client: %v", err)
+	}
+
 	a.logger.Info("Silver worker shutdown complete")
 }
 
@@ -81,16 +92,17 @@ func (a *App) initializeOrchestrator(batchSize int, workers int) error { // TODO
 		return fmt.Errorf("failed to initialize event hub subscriber: %w", err)
 	}
 
-	r := a.initializeRedis(workers)
+	h := silver.NewHandler(a.logger, a.redis, p)
 
-	sh := silver.NewHandler(a.logger, r, p)
-
-	o := silver.NewProcessor(
-		silver.Config{
-			Workers:   workers,
-			BatchSize: batchSize,
+	o := processor.NewProcessor(
+		processor.Config{
+			Workers: workers,
 		},
-		a.logger, s, sh.Handle,
+		a.logger,
+		s,
+		func(i int) processor.Worker {
+			return silver.NewWorker(i, batchSize, a.logger, h)
+		},
 	)
 
 	a.orchestrator = o
@@ -142,20 +154,17 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 }
 
 // initializeRedis sets up the Redis client.
-func (a *App) initializeRedis(workers int) *redis.Client { // TODO: pass conf
+func (a *App) initializeRedis(workers int) { // TODO: pass conf
 	hr := strings.TrimSpace(os.Getenv("POCITPRED001_HOST"))
 	pr := strings.TrimSpace(os.Getenv("POCITPRED001_PORT"))
 	pwdr := strings.TrimSpace(os.Getenv("POCITPRED001_PASSWORD"))
 
-	rdb := redis.NewClient(&redis.Options{ // TODO: move to external/redis
-		Addr:         fmt.Sprintf("%s:%s", hr, pr),
-		Password:     pwdr,
-		DB:           0,
-		MinIdleConns: workers,
-		TLSConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		},
+	r := cache.NewRedis(&cache.Config{
+		Host:        hr,
+		Port:        func() int { p, _ := strconv.Atoi(pr); return p }(),
+		Password:    pwdr,
+		Connections: workers,
 	})
 
-	return rdb
+	a.redis = r
 }

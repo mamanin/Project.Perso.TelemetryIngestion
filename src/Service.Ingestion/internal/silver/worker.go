@@ -18,11 +18,11 @@ type Worker struct {
 	pool sync.Pool
 
 	logger  logger.Logger
-	handler messaging.BatchHandler[core.MetricEvent]
+	handler processor.Handler[core.MetricEvent]
 }
 
 // NewWorker creates a new Worker instance.
-func NewWorker(id int, logger logger.Logger, handler messaging.BatchHandler[core.MetricEvent], batchSize int) processor.Worker {
+func NewWorker(id int, batchSize int, logger logger.Logger, h processor.Handler[core.MetricEvent]) processor.Worker {
 	return &Worker{
 		id: id,
 		pool: sync.Pool{
@@ -32,7 +32,7 @@ func NewWorker(id int, logger logger.Logger, handler messaging.BatchHandler[core
 		},
 
 		logger:  logger,
-		handler: handler,
+		handler: h,
 	}
 }
 
@@ -45,10 +45,10 @@ func (w *Worker) Process(ctx context.Context, queue chan messaging.RawEventBatch
 
 // processBatch processes a single batch of raw events.
 func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch) {
+	start := time.Now()
+
 	eventPool := w.pool.Get().([]*core.MetricEvent)
 	defer w.pool.Put(eventPool[:0])
-
-	start := time.Now()
 
 	for _, bytes := range batch {
 		var e core.MetricEvent
@@ -59,7 +59,7 @@ func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch
 		eventPool = append(eventPool, &e)
 	}
 
-	w.handler(ctx, eventPool)
+	w.handler.Handle(ctx, eventPool)
 
-	w.logger.Info("W%d: %.2fμs: %d", w.id, float64(time.Since(start).Microseconds())/float64(len(eventPool)), len(eventPool))
+	w.logger.Info("W%d: %.2fμs: %d", w.id, float64(time.Since(start).Microseconds())/float64(len(batch)), len(batch))
 }

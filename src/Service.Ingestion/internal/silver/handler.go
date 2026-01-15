@@ -7,20 +7,22 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/redis/go-redis/v9"
+	"service.ingestion/external/cache"
 	"service.ingestion/external/messaging"
 	"service.ingestion/external/observability/logger"
 	"service.ingestion/internal/core"
+	"service.ingestion/internal/core/processor"
 )
 
 // Handler processes batches of core.MetricEvent items.
 type Handler struct {
 	logger    logger.Logger
-	redis     *redis.Client
+	redis     *cache.Redis
 	publisher messaging.Publisher
 }
 
 // NewHandler creates a new Handler instance.
-func NewHandler(logger logger.Logger, redis *redis.Client, publisher messaging.Publisher) *Handler {
+func NewHandler(logger logger.Logger, redis *cache.Redis, publisher messaging.Publisher) processor.Handler[core.MetricEvent] {
 	return &Handler{
 		logger:    logger,
 		redis:     redis,
@@ -28,17 +30,10 @@ func NewHandler(logger logger.Logger, redis *redis.Client, publisher messaging.P
 	}
 }
 
-// metricProcess holds information for processing a single metric event.
-type metricProcess struct {
-	key    string
-	event  *core.MetricEvent
-	getCmd *redis.StringCmd
-}
-
 // Handle processes a batch of core.MetricEvent items.
 func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
-	metricProcesses := make([]*metricProcess, 0, len(batch))
-	hitPipe := h.redis.Pipeline()
+	metricProcesses := make([]*cache.ItemProcess[core.MetricEvent], 0, len(batch))
+	rp := h.redis.Pipeline()
 
 	for _, event := range batch {
 		rules := event.GetMetricRule()
@@ -58,38 +53,38 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 		}
 
 		key := event.GetMetricKey()
-		m := &metricProcess{
-			key:    key,
-			event:  event,
-			getCmd: hitPipe.Get(ctx, key),
+		m := &cache.ItemProcess[core.MetricEvent]{
+			Key:    key,
+			Item:   event,
+			GetCmd: rp.Get(ctx, key),
 		}
 		metricProcesses = append(metricProcesses, m)
 	}
 
-	if _, err := hitPipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+	if _, err := rp.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
 		h.logger.Error(err, "Error executing hit redis pipeline: %v", err)
 		return
 	}
 
 	metricUpdates := make([][]byte, 0, len(metricProcesses))
-	setPipe := h.redis.Pipeline()
+	rp = h.redis.Pipeline()
 
 	for _, mp := range metricProcesses {
-		_, err := mp.getCmd.Result()
+		_, err := mp.GetCmd.Result()
 		if err == nil {
 			continue
 		}
 
-		bytes, err := json.Marshal(mp.event)
+		bytes, err := json.Marshal(mp.Item)
 		if err != nil {
 			continue
 		}
 
 		metricUpdates = append(metricUpdates, bytes)
-		setPipe.Set(ctx, mp.key, mp.event.Value, 1*time.Hour)
+		rp.Set(ctx, mp.Key, mp.Item.Value, 1*time.Hour)
 	}
 
-	if _, err := setPipe.Exec(ctx); err != nil {
+	if _, err := rp.Exec(ctx); err != nil {
 		h.logger.Error(err, "Error executing set redis pipeline: %v", err)
 		return
 	}
@@ -98,7 +93,10 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 		return
 	}
 
-	if err := h.publisher.PublishBatch(ctx, metricUpdates); err != nil {
+	tCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := h.publisher.PublishBatch(tCtx, metricUpdates); err != nil {
 		h.logger.Error(err, "Error publishing metric updates: %v", err)
 	}
 }

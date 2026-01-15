@@ -10,7 +10,7 @@ type MetricEvent struct {
 	SensorPath string `json:"sp"`
 	Name       string `json:"n"`
 	Value      any    `json:"v"`
-	Unit       string `json:"u"`
+	Unit       string `json:"u,omitempty"`
 	Timestamp  int64  `json:"_ts"`
 }
 
@@ -26,7 +26,7 @@ func (e *MetricEvent) GetMetricRule() *MetricRuleProvider {
 
 // GetMetricKey generates a unique key for the MetricEvent by combining the sensor path and metric name.
 func (e *MetricEvent) GetMetricKey() string {
-	return strings.ReplaceAll(e.SensorPath[1:], "/", ":") + ":" + e.Name + ":" + strconv.FormatInt(roundTo2Minutes(e.Timestamp), 10)
+	return "service.ingestion:metric.update:" + strings.ReplaceAll(e.SensorPath[1:], "/", ":") + ":" + e.Name + ":" + strconv.FormatInt(roundTo2Minutes(e.Timestamp), 10)
 }
 
 // roundTo2Minutes rounds the given timestamp (in seconds) up to the nearest 2-minute interval.

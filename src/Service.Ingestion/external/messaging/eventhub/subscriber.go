@@ -132,8 +132,6 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 			events, err := pc.ReceiveEvents(reCtx, s.options.batchSize, nil)
 			cancel()
 
-			s.logger.Info("Receiver: %.2fμs: %d", float64(time.Since(start).Microseconds()), len(events))
-
 			if err != nil {
 				s.logger.Debug("Unable to receive events for partition %s: %v", pc.PartitionID(), err)
 				return
@@ -143,9 +141,9 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 				continue
 			}
 
-			eventPool := make(messaging.RawEventBatch, 0, len(events))
-			for _, event := range events {
-				eventPool = append(eventPool, event.Body)
+			eventPool := make(messaging.RawEventBatch, len(events))
+			for i, event := range events {
+				eventPool[i] = event.Body
 			}
 
 			select {
@@ -158,6 +156,8 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 				s.latest = events[len(events)-1]
 				s.mu.Unlock()
 			}
+
+			s.logger.Info("Receiver: %.2fμs: %d", float64(time.Since(start).Microseconds()), len(events))
 		}
 	}
 }

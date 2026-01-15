@@ -1,28 +1,43 @@
 ﻿package core
 
 import (
+	"fmt"
 	"regexp"
 )
 
 const (
-	DeviceSensorPath      = "^\\/device\\/[0-9]{4,8}$"
-	CpuSensorPath         = "^\\/device\\/[0-9]{4,8}\\/cpu$"
-	EnvironmentSensorPath = "^\\/device\\/[0-9]{4,8}\\/environment$"
-	NetworkSensorPath     = "^\\/device\\/[0-9]{4,8}\\/network$"
-	StorageSensorPath     = "^\\/device\\/[0-9]{4,8}\\/storage$"
-	BatterySensorPath     = "^\\/device\\/[0-9]{4,8}\\/battery$"
+	CpuSensor         = "cpu"
+	EnvironmentSensor = "environment"
+	NetworkSensor     = "network"
+	StorageSensor     = "storage"
+	BatterySensor     = "battery"
+
+	devicePath    = "/device/%s"
+	DevicePattern = "^\\/device\\/[0-9]{4,8}$"
+
+	sensorPath    = "/device/%s/%s"
+	SensorPattern = "^\\/device\\/[0-9]{4,8}\\/%s$"
 )
 
 var metricRuleMap = []struct {
 	pattern *regexp.Regexp
 	rules   *MetricRuleProvider
 }{
-	{regexp.MustCompile(DeviceSensorPath), &DeviceRules},
-	{regexp.MustCompile(CpuSensorPath), &CpuRules},
-	{regexp.MustCompile(EnvironmentSensorPath), &EnvironmentRules},
-	{regexp.MustCompile(NetworkSensorPath), &NetworkRules},
-	{regexp.MustCompile(StorageSensorPath), &StorageRules},
-	{regexp.MustCompile(BatterySensorPath), &BatteryRules},
+	{regexp.MustCompile(DevicePattern), &DeviceRules},
+	{regexp.MustCompile(fmt.Sprintf(SensorPattern, CpuSensor)), &CpuRules},
+	{regexp.MustCompile(fmt.Sprintf(SensorPattern, EnvironmentSensor)), &EnvironmentRules},
+	{regexp.MustCompile(fmt.Sprintf(SensorPattern, NetworkSensor)), &NetworkRules},
+	{regexp.MustCompile(fmt.Sprintf(SensorPattern, StorageSensor)), &StorageRules},
+	{regexp.MustCompile(fmt.Sprintf(SensorPattern, BatterySensor)), &BatteryRules},
+}
+
+// FormatSensorPath constructs the sensor path based on device ID and sensor name.
+func FormatSensorPath(deviceID, sensor string) string {
+	if sensor == "" {
+		return fmt.Sprintf(devicePath, deviceID)
+	}
+
+	return fmt.Sprintf(sensorPath, deviceID, sensor)
 }
 
 var (
@@ -59,7 +74,7 @@ var DeviceRules = MetricRuleProvider{
 
 // CpuRules defines the metric rules for CPU sensors.
 var CpuRules = MetricRuleProvider{
-	Source: "device.cpu",
+	Source: CpuSensor,
 	Rules: MetricProvider{
 		"usage": MetricRules{
 			converter: PercentConverter,
@@ -98,7 +113,7 @@ var CpuRules = MetricRuleProvider{
 
 // EnvironmentRules defines the metric rules for environmental sensors.
 var EnvironmentRules = MetricRuleProvider{
-	Source: "device.environment",
+	Source: EnvironmentSensor,
 	Rules: MetricProvider{
 		"temperature": MetricRules{
 			converter: KelvinConverter,
@@ -137,7 +152,7 @@ var EnvironmentRules = MetricRuleProvider{
 
 // NetworkRules defines the metric rules for network sensors.
 var NetworkRules = MetricRuleProvider{
-	Source: "device.network",
+	Source: NetworkSensor,
 	Rules: MetricProvider{
 		"bytes_received": MetricRules{
 			converter: BytesConverter,
@@ -170,7 +185,7 @@ var (
 
 // StorageRules defines the metric rules for storage sensors.
 var StorageRules = MetricRuleProvider{
-	Source: "device.storage",
+	Source: StorageSensor,
 	Rules: MetricProvider{
 		"total_size": MetricRules{
 			converter: BytesConverter,
@@ -211,7 +226,7 @@ var (
 
 // BatteryRules defines the metric rules for battery sensors.
 var BatteryRules = MetricRuleProvider{
-	Source: "device.battery",
+	Source: BatterySensor,
 	Rules: MetricProvider{
 		"level": MetricRules{
 			converter: PercentConverter,

@@ -9,6 +9,3 @@ type RawEventBatch = [][]byte
 
 // RawBatchHandler defines a function type that processes a batch of raw events.
 type RawBatchHandler func(ctx context.Context, batch RawEventBatch)
-
-// BatchHandler defines a generic function type that processes a batch of events of type T.
-type BatchHandler[T any] func(ctx context.Context, batch []*T)
