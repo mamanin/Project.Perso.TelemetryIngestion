@@ -18,30 +18,36 @@ type Worker struct {
 	pool sync.Pool
 	wg   sync.WaitGroup
 
-	logger        logger.Logger
-	legacyHandler processor.Handler[pkg.TelemetryLegacyEvent]
-	v1Handler     processor.Handler[pkg.TelemetryV1Event]
-	v2Handler     processor.Handler[pkg.TelemetryV2Event]
+	logger          logger.Logger
+	versionHandlers map[string]processor.HandlerAdapter
+	legacyHandler   processor.HandlerAdapter
 }
 
 // NewWorker creates a new Worker instance.
-func NewWorker(id int, batchSize int, logger logger.Logger, v2h processor.Handler[pkg.TelemetryV2Event], v1h processor.Handler[pkg.TelemetryV1Event], lh processor.Handler[pkg.TelemetryLegacyEvent]) processor.Worker {
+func NewWorker(id int, batchSize int, logger logger.Logger, handlers []processor.HandlerAdapter, legacyHandler processor.HandlerAdapter) processor.Worker {
+	poolFactory := func() any {
+		m := make(map[string]any)
+		for _, h := range handlers {
+			m[h.Version()] = h.CreateBatch(batchSize)
+		}
+		m[legacyHandler.Version()] = legacyHandler.CreateBatch(batchSize)
+		return m
+	}
+
+	hm := make(map[string]processor.HandlerAdapter)
+	for _, h := range handlers {
+		hm[h.Version()] = h
+	}
+
 	return &Worker{
 		id: id,
 		pool: sync.Pool{
-			New: func() any {
-				return map[string]any{
-					pkg.V2:     make([]*pkg.TelemetryV2Event, 0, batchSize),
-					pkg.V1:     make([]*pkg.TelemetryV1Event, 0, batchSize),
-					pkg.Legacy: make([]*pkg.TelemetryLegacyEvent, 0, batchSize),
-				}
-			},
+			New: poolFactory,
 		},
 
-		logger:        logger,
-		v2Handler:     v2h,
-		v1Handler:     v1h,
-		legacyHandler: lh,
+		logger:          logger,
+		versionHandlers: hm,
+		legacyHandler:   legacyHandler,
 	}
 }
 
@@ -55,18 +61,14 @@ func (w *Worker) Process(ctx context.Context, queue chan messaging.RawEventBatch
 // processBatch processes a single batch of raw events.
 func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch) {
 	start := time.Now()
-
-	// TODO: try refactoring
-	eventPool := w.pool.Get().(map[string]any)
-	v2Pool := eventPool[pkg.V2].([]*pkg.TelemetryV2Event)
-	v1Pool := eventPool[pkg.V1].([]*pkg.TelemetryV1Event)
-	legacyPool := eventPool[pkg.Legacy].([]*pkg.TelemetryLegacyEvent)
+	pool := w.pool.Get().(map[string]any)
 
 	defer func() {
-		eventPool[pkg.V2] = v2Pool[:0]
-		eventPool[pkg.V1] = v1Pool[:0]
-		eventPool[pkg.Legacy] = legacyPool[:0]
-		w.pool.Put(eventPool)
+		for _, h := range w.versionHandlers {
+			h.ClearBatch(pool)
+		}
+		w.legacyHandler.ClearBatch(pool)
+		w.pool.Put(pool)
 	}()
 	defer w.wg.Wait()
 
@@ -74,37 +76,23 @@ func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch
 		var e pkg.VersionDiscriminant
 
 		if err := easyjson.Unmarshal(bytes, &e); err == nil {
-			switch e.Version {
-			case pkg.V2:
-				var ev2 pkg.TelemetryV2Event
-				if err = easyjson.Unmarshal(bytes, &ev2); err == nil {
-					v2Pool = append(v2Pool, &ev2)
-				}
-			case pkg.V1:
-				var ev1 pkg.TelemetryV1Event
-				if err = easyjson.Unmarshal(bytes, &ev1); err == nil {
-					v1Pool = append(v1Pool, &ev1)
-				}
+			if h, ok := w.versionHandlers[e.Version]; ok {
+				h.UnmarshalAndAppend(bytes, pool)
+				continue
 			}
 		}
 
-		var le pkg.TelemetryLegacyEvent
-		if err := easyjson.Unmarshal(bytes, &le); err != nil {
-			continue
-		}
-		legacyPool = append(legacyPool, &le)
+		w.legacyHandler.UnmarshalAndAppend(bytes, pool)
+	}
+
+	for _, h := range w.versionHandlers {
+		w.wg.Go(func() {
+			h.Handle(ctx, pool)
+		})
 	}
 
 	w.wg.Go(func() {
-		w.v2Handler.Handle(ctx, v2Pool)
-	})
-
-	w.wg.Go(func() {
-		w.v1Handler.Handle(ctx, v1Pool)
-	})
-
-	w.wg.Go(func() {
-		w.legacyHandler.Handle(ctx, legacyPool)
+		w.legacyHandler.Handle(ctx, pool)
 	})
 
 	w.logger.Info("W%d|%.2fμs|%de", w.id, float64(time.Since(start).Microseconds()), len(batch))

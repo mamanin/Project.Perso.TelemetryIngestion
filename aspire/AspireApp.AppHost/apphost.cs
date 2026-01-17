@@ -16,6 +16,7 @@ var kusto = builder
 // kusto
 //     .WithCreationScript(
 //         ".create table metrics (timestamp: datetime, device_id: string, metric: string, value: dynamic, unit: string)"
+//         + "\n" +
 //         ".alter table metrics policy streamingingestion enable"
 //     );
 

@@ -13,6 +13,7 @@ import (
 	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/bronze"
 	"service.ingestion/internal/core/processor"
+	"service.ingestion/pkg"
 )
 
 // App represents the entire application with all its dependencies.
@@ -83,10 +84,6 @@ func (a *App) initializeOrchestrator(batchSize int, workers int) error { // TODO
 		return fmt.Errorf("failed to initialize event hub subscriber: %w", err)
 	}
 
-	v2h := bronze.NewV2Handler(a.logger, p)
-	v1h := bronze.NewV1Handler(a.logger, p)
-	lh := bronze.NewLegacyHandler(a.logger, p)
-
 	o := processor.NewProcessor(
 		processor.Config{
 			Workers: workers,
@@ -94,7 +91,13 @@ func (a *App) initializeOrchestrator(batchSize int, workers int) error { // TODO
 		a.logger,
 		s,
 		func(i int) processor.Worker {
-			return bronze.NewWorker(i, batchSize, a.logger, v2h, v1h, lh)
+			return bronze.NewWorker(i, batchSize, a.logger,
+				[]processor.HandlerAdapter{
+					processor.NewHandlerAdapter(pkg.V2, bronze.NewV2Handler(a.logger, p)),
+					processor.NewHandlerAdapter(pkg.V1, bronze.NewV1Handler(a.logger, p)),
+				},
+				processor.NewHandlerAdapter(pkg.Legacy, bronze.NewLegacyHandler(a.logger, p)),
+			)
 		},
 	)
 
