@@ -10,9 +10,14 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Azure services
 var kusto = builder
-    .AddAzureKustoCluster("pocitpdex001")
-    .RunAsEmulator(e => e.WithLifetime(ContainerLifetime.Persistent));
-kusto.AddReadWriteDatabase("telemetries");
+    .AddAzureKustoCluster("pocitpadx001")
+    .RunAsEmulator(e => e.WithLifetime(ContainerLifetime.Persistent))
+    .AddReadWriteDatabase("telemetries");
+// kusto
+//     .WithCreationScript(
+//         ".create table metrics (timestamp: datetime, device_id: string, metric: string, value: dynamic, unit: string)"
+//         ".alter table metrics policy streamingingestion enable"
+//     );
 
 var eventHub = builder
     .AddAzureEventHubs("pocitpevh001")
@@ -42,6 +47,8 @@ var cache = builder
 // Add Golang workers
 var bronze = builder
     .AddGolangApp("bronze", "../../src/Service.Ingestion/cmd/bronze-worker")
+    .WaitFor(eventHub)
+    .WaitFor(blob)
     .WithReference(eventHub)
     .WithReference(raw)
     .WithReference(metrics)
@@ -50,6 +57,8 @@ var bronze = builder
 
 var silver = builder
     .AddGolangApp("silver", "../../src/Service.Ingestion/cmd/silver-worker")
+    .WaitFor(eventHub)
+    .WaitFor(blob)
     .WithReference(eventHub)
     .WithReference(metrics)
     .WithReference(data)
@@ -59,15 +68,31 @@ var silver = builder
 
 var gold = builder
     .AddGolangApp("gold", "../../src/Service.Ingestion/cmd/gold-worker")
+    .WaitFor(kusto)
+    .WaitFor(eventHub)
+    .WaitFor(blob)
     .WithReference(eventHub)
     .WithReference(data)
+    .WithReference(kusto)
     .WithReference(kusto)
     .WithReference(blob)
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 // Add test sender
 _ = builder
-    .AddGolangApp("test-sender", "../../src/Service.Ingestion/cmd/telemetry-senders/legacy-sender")
+    .AddGolangApp("v2-sender", "../../src/Service.Ingestion/cmd/telemetry-senders/v2-sender")
+    .WithReference(eventHub)
+    .WithReference(raw)
+    .WithOtlpExporter(OtlpProtocol.Grpc);
+
+_ = builder
+    .AddGolangApp("v1-sender", "../../src/Service.Ingestion/cmd/telemetry-senders/v1-sender")
+    .WithReference(eventHub)
+    .WithReference(raw)
+    .WithOtlpExporter(OtlpProtocol.Grpc);
+
+_ = builder
+    .AddGolangApp("legacy-sender", "../../src/Service.Ingestion/cmd/telemetry-senders/legacy-sender")
     .WithReference(eventHub)
     .WithReference(raw)
     .WithOtlpExporter(OtlpProtocol.Grpc);

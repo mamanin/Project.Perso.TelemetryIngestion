@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/mailru/easyjson"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/pkg"
 )
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	wg := sync.WaitGroup{}
-	for range 5 {
+	for range 3 {
 		wg.Go(func() {
 			if err = sendBatch(ctx, sender); err != nil {
 				fmt.Printf("Error in sendBatch: %s\n", err.Error())
@@ -41,13 +41,13 @@ func main() {
 }
 
 func sendBatch(ctx context.Context, sender *eventhub.Publisher) error {
-	nb := 100
+	nb := 50
 	for {
 		batch := make([][]byte, 0, nb)
 
 		for range nb {
 			msg := generateTelemetries()
-			data, err := json.Marshal(msg)
+			data, err := easyjson.Marshal(msg)
 			if err != nil {
 				fmt.Printf("Marshal error: %v\n", err)
 				continue
@@ -55,13 +55,13 @@ func sendBatch(ctx context.Context, sender *eventhub.Publisher) error {
 			batch = append(batch, data)
 		}
 
-		tCtx, tCancel := context.WithTimeout(ctx, 30*time.Second)
 		fmt.Printf("Sending batch of %d messages\n", len(batch))
-		err := sender.PublishBatch(tCtx, batch)
+		err := sender.PublishBatch(ctx, batch)
 		if err != nil {
 			fmt.Printf("Failed to send batch: %s\n", err.Error())
 		}
-		tCancel()
+
+		time.Sleep(2 * time.Second)
 	}
 }
 
@@ -71,9 +71,9 @@ func generateTelemetries() pkg.TelemetryLegacyEvent {
 		Timestamp:      time.Now().Unix(),
 		CpuMemory:      rand.Float64() * 100,
 		CpuUsage:       rand.Float64() * 100,
-		Uptime:         rand.Float64() * 2592000,
+		Uptime:         rand.Float64() * 3600,
 		State:          []string{"on", "off", "booting", "maintenance", "error"}[rand.Intn(5)],
-		CpuTemperature: 273.0 + rand.Float64()*100,
+		CpuTemperature: 20 + rand.Float64()*100,
 		NetworkLatency: rand.Float64(),
 	}
 }

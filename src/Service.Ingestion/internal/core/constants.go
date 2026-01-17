@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	Device            = "device"
 	CpuSensor         = "cpu"
 	EnvironmentSensor = "environment"
 	NetworkSensor     = "network"
@@ -33,7 +34,7 @@ var metricRuleMap = []struct {
 
 // FormatSensorPath constructs the sensor path based on device ID and sensor name.
 func FormatSensorPath(deviceID, sensor string) string {
-	if sensor == "" {
+	if sensor == Device {
 		return fmt.Sprintf(devicePath, deviceID)
 	}
 
@@ -48,7 +49,7 @@ var (
 
 // DeviceRules defines the metric rules for device sensors.
 var DeviceRules = MetricRuleProvider{
-	Source: "device",
+	Source: Device,
 	Rules: MetricProvider{
 		"state": MetricRules{
 			converter: DefaultConverter,

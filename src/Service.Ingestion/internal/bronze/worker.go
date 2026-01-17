@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/mailru/easyjson"
 	"service.ingestion/external/messaging"
 	"service.ingestion/external/observability/logger"
 	"service.ingestion/internal/core/processor"
@@ -56,13 +56,13 @@ func (w *Worker) Process(ctx context.Context, queue chan messaging.RawEventBatch
 func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch) {
 	start := time.Now()
 
+	// TODO: try refactoring
 	eventPool := w.pool.Get().(map[string]any)
 	v2Pool := eventPool[pkg.V2].([]*pkg.TelemetryV2Event)
 	v1Pool := eventPool[pkg.V1].([]*pkg.TelemetryV1Event)
 	legacyPool := eventPool[pkg.Legacy].([]*pkg.TelemetryLegacyEvent)
 
 	defer func() {
-		w.logger.Debug("V2 items: %d, V1 items: %d, Legacy items: %d", len(v2Pool), len(v1Pool), len(legacyPool))
 		eventPool[pkg.V2] = v2Pool[:0]
 		eventPool[pkg.V1] = v1Pool[:0]
 		eventPool[pkg.Legacy] = legacyPool[:0]
@@ -73,23 +73,23 @@ func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch
 	for _, bytes := range batch {
 		var e pkg.VersionDiscriminant
 
-		if err := json.Unmarshal(bytes, &e); err == nil {
+		if err := easyjson.Unmarshal(bytes, &e); err == nil {
 			switch e.Version {
 			case pkg.V2:
 				var ev2 pkg.TelemetryV2Event
-				if err = json.Unmarshal(bytes, &ev2); err == nil {
+				if err = easyjson.Unmarshal(bytes, &ev2); err == nil {
 					v2Pool = append(v2Pool, &ev2)
 				}
 			case pkg.V1:
 				var ev1 pkg.TelemetryV1Event
-				if err = json.Unmarshal(bytes, &ev1); err == nil {
+				if err = easyjson.Unmarshal(bytes, &ev1); err == nil {
 					v1Pool = append(v1Pool, &ev1)
 				}
 			}
 		}
 
 		var le pkg.TelemetryLegacyEvent
-		if err := json.Unmarshal(bytes, &le); err != nil {
+		if err := easyjson.Unmarshal(bytes, &le); err != nil {
 			continue
 		}
 		legacyPool = append(legacyPool, &le)
@@ -107,5 +107,5 @@ func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch
 		w.legacyHandler.Handle(ctx, legacyPool)
 	})
 
-	w.logger.Info("W%d: %.2fμs: %d", w.id, float64(time.Since(start).Microseconds())/float64(len(batch)), len(batch))
+	w.logger.Info("W%d|%.2fμs|%de", w.id, float64(time.Since(start).Microseconds()), len(batch))
 }

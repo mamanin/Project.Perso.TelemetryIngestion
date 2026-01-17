@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/observability/logger"
-	"service.ingestion/external/storage"
+	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/bronze"
 	"service.ingestion/internal/core/processor"
 )
@@ -23,11 +23,11 @@ type App struct {
 
 // NewApp creates and initializes a new App instance with all dependencies.
 func NewApp(ctx context.Context) (*App, error) {
-	lToCtx, bCancel := context.WithTimeout(ctx, 10*time.Second)
-	defer bCancel()
+	tCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
 	log, err := logger.NewOtelLogger(
-		lToCtx,
+		tCtx,
 		attribute.String("service.layer", "bronze-layer"),
 	)
 	if err != nil {
@@ -42,7 +42,7 @@ func NewApp(ctx context.Context) (*App, error) {
 
 	app := &App{logger: log}
 
-	batchSize := 50
+	batchSize := 100
 	workers := 4
 
 	if err = app.initializeOrchestrator(batchSize, workers); err != nil {
@@ -107,7 +107,7 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 	pwcs := strings.TrimSpace(os.Getenv("PARTITION_WORKERS_CONNECTIONSTRING"))
 	pwbcn := strings.TrimSpace(os.Getenv("PARTITION_WORKERS_BLOBCONTAINERNAME"))
 
-	cp, err := storage.NewCheckpoint(storage.Config{
+	cp, err := container.NewCheckpoint(container.Config{
 		ConnectionString: pwcs,
 		ContainerName:    pwbcn,
 	})
@@ -119,7 +119,7 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 	tre := strings.TrimSpace(os.Getenv("TELEMETRY_RAW_EVENTHUBNAME"))
 	tme := strings.TrimSpace(os.Getenv("TELEMETRY_METRICS_EVENTHUBNAME"))
 
-	publisher, err := eventhub.NewPublisher(eventhub.Config{
+	p, err := eventhub.NewPublisher(eventhub.Config{
 		ConnectionString: echcs,
 		EventHubName:     tme,
 	})
@@ -127,7 +127,7 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 		return nil, nil, fmt.Errorf("failed to create event hub publisher: %w", err)
 	}
 
-	subscriber, err := eventhub.NewSubscriber(
+	s, err := eventhub.NewSubscriber(
 		a.logger,
 		eventhub.SubscriberConfig{
 			Config: eventhub.Config{
@@ -143,5 +143,5 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}
 
-	return publisher, subscriber, nil
+	return p, s, nil
 }

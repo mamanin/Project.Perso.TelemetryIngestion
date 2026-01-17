@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/goccy/go-json"
-	"github.com/redis/go-redis/v9"
-	"service.ingestion/external/cache"
+	"github.com/mailru/easyjson"
+	goredis "github.com/redis/go-redis/v9"
+	"service.ingestion/external/cache/redis"
 	"service.ingestion/external/messaging"
 	"service.ingestion/external/observability/logger"
 	"service.ingestion/internal/core"
@@ -17,12 +17,12 @@ import (
 // Handler processes batches of core.MetricEvent items.
 type Handler struct {
 	logger    logger.Logger
-	redis     *cache.Redis
+	redis     *redis.Client
 	publisher messaging.Publisher
 }
 
 // NewHandler creates a new Handler instance.
-func NewHandler(logger logger.Logger, redis *cache.Redis, publisher messaging.Publisher) processor.Handler[core.MetricEvent] {
+func NewHandler(logger logger.Logger, redis *redis.Client, publisher messaging.Publisher) processor.Handler[core.MetricEvent] {
 	return &Handler{
 		logger:    logger,
 		redis:     redis,
@@ -32,7 +32,7 @@ func NewHandler(logger logger.Logger, redis *cache.Redis, publisher messaging.Pu
 
 // Handle processes a batch of core.MetricEvent items.
 func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
-	metricProcesses := make([]*cache.ItemProcess[core.MetricEvent], 0, len(batch))
+	metricProcesses := make([]*redis.ItemProcess[core.MetricEvent], 0, len(batch))
 	rp := h.redis.Pipeline()
 
 	for _, event := range batch {
@@ -53,7 +53,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 		}
 
 		key := event.GetMetricKey()
-		m := &cache.ItemProcess[core.MetricEvent]{
+		m := &redis.ItemProcess[core.MetricEvent]{
 			Key:    key,
 			Item:   event,
 			GetCmd: rp.Get(ctx, key),
@@ -61,7 +61,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 		metricProcesses = append(metricProcesses, m)
 	}
 
-	if _, err := rp.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+	if _, err := rp.Exec(ctx); err != nil && !errors.Is(err, goredis.Nil) {
 		h.logger.Error(err, "Error executing hit redis pipeline: %v", err)
 		return
 	}
@@ -75,7 +75,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 			continue
 		}
 
-		bytes, err := json.Marshal(mp.Item)
+		bytes, err := easyjson.Marshal(mp.Item)
 		if err != nil {
 			continue
 		}
@@ -93,10 +93,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 		return
 	}
 
-	tCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := h.publisher.PublishBatch(tCtx, metricUpdates); err != nil {
+	if err := h.publisher.PublishBatch(ctx, metricUpdates); err != nil {
 		h.logger.Error(err, "Error publishing metric updates: %v", err)
 	}
 }

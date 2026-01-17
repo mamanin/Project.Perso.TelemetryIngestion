@@ -2,9 +2,8 @@
 
 import (
 	"context"
-	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/mailru/easyjson"
 	"service.ingestion/external/messaging"
 	"service.ingestion/external/observability/logger"
 	"service.ingestion/internal/core"
@@ -41,16 +40,13 @@ func (h *V1Handler) Handle(ctx context.Context, batch []*pkg.TelemetryV1Event) {
 				Timestamp:  event.Timestamp,
 			}
 
-			if bytes, err := json.Marshal(me); err == nil {
+			if bytes, err := easyjson.Marshal(me); err == nil {
 				events = append(events, bytes)
 			}
 		}
 	}
 
-	tCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := h.publisher.PublishBatch(tCtx, events); err != nil {
+	if err := h.publisher.PublishBatch(ctx, events); err != nil {
 		h.logger.Error(err, "Error publishing metric updates: %v", err)
 	}
 }

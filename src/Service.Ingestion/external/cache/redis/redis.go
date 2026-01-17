@@ -1,4 +1,4 @@
-﻿package cache
+﻿package redis
 
 import (
 	"crypto/tls"
@@ -7,9 +7,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type Redis = redis.Client
+type Client = redis.Client
 
-// Config holds configuration for Redis cache.
+// Config holds configuration for Client cache.
 type Config struct {
 	Host        string
 	Port        int
@@ -17,8 +17,8 @@ type Config struct {
 	Connections int
 }
 
-// NewRedis creates a new Redis client based on the provided configuration.
-func NewRedis(cfg *Config) *Redis {
+// NewRedis creates a new redis.Client based on the provided configuration.
+func NewRedis(cfg *Config) *Client {
 	client := redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password:     cfg.Password,

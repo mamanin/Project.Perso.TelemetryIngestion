@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
-	"service.ingestion/external/cache"
+	"service.ingestion/external/cache/redis"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/observability/logger"
-	"service.ingestion/external/storage"
+	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/core/processor"
 	"service.ingestion/internal/silver"
 )
@@ -21,13 +21,13 @@ import (
 type App struct {
 	logger       logger.Logger
 	orchestrator *processor.Processor
-	redis        *cache.Redis
+	redis        *redis.Client
 }
 
 // NewApp creates and initializes a new App instance with all dependencies.
 func NewApp(ctx context.Context) (*App, error) {
-	tCtx, tCancel := context.WithTimeout(ctx, 10*time.Second)
-	defer tCancel()
+	tCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
 	log, err := logger.NewOtelLogger(
 		tCtx,
@@ -114,7 +114,7 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 	pwcs := strings.TrimSpace(os.Getenv("PARTITION_WORKERS_CONNECTIONSTRING"))
 	pwbcn := strings.TrimSpace(os.Getenv("PARTITION_WORKERS_BLOBCONTAINERNAME"))
 
-	cp, err := storage.NewCheckpoint(storage.Config{
+	cp, err := container.NewCheckpoint(container.Config{
 		ConnectionString: pwcs,
 		ContainerName:    pwbcn,
 	})
@@ -126,7 +126,7 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 	tme := strings.TrimSpace(os.Getenv("TELEMETRY_METRICS_EVENTHUBNAME"))
 	tde := strings.TrimSpace(os.Getenv("TELEMETRY_DATA_EVENTHUBNAME"))
 
-	publisher, err := eventhub.NewPublisher(eventhub.Config{
+	p, err := eventhub.NewPublisher(eventhub.Config{
 		ConnectionString: echcs,
 		EventHubName:     tde,
 	})
@@ -134,7 +134,7 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 		return nil, nil, fmt.Errorf("failed to create event hub publisher: %w", err)
 	}
 
-	subscriber, err := eventhub.NewSubscriber(
+	s, err := eventhub.NewSubscriber(
 		a.logger,
 		eventhub.SubscriberConfig{
 			Config: eventhub.Config{
@@ -150,16 +150,16 @@ func (a *App) initializeMessaging(batchSize int, workers int) (*eventhub.Publish
 		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}
 
-	return publisher, subscriber, nil
+	return p, s, nil
 }
 
-// initializeRedis sets up the Redis client.
+// initializeRedis sets up the redis cache.
 func (a *App) initializeRedis(workers int) { // TODO: pass conf
 	hr := strings.TrimSpace(os.Getenv("POCITPRED001_HOST"))
 	pr := strings.TrimSpace(os.Getenv("POCITPRED001_PORT"))
 	pwdr := strings.TrimSpace(os.Getenv("POCITPRED001_PASSWORD"))
 
-	r := cache.NewRedis(&cache.Config{
+	r := redis.NewRedis(&redis.Config{
 		Host:        hr,
 		Port:        func() int { p, _ := strconv.Atoi(pr); return p }(),
 		Password:    pwdr,

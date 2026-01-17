@@ -1,4 +1,4 @@
-﻿package storage
+﻿package container
 
 import (
 	"fmt"
@@ -23,10 +23,10 @@ func NewCheckpoint(cfg Config) (*Checkpoint, error) {
 		return nil, fmt.Errorf("failed to create blob container client: %w", err)
 	}
 
-	checkpointStore, err := checkpoints.NewBlobStore(client, nil)
+	cs, err := checkpoints.NewBlobStore(client, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create checkpoint store: %w", err)
 	}
 
-	return checkpointStore, nil
+	return cs, nil
 }

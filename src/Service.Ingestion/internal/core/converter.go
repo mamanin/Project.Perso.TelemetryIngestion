@@ -1,6 +1,8 @@
 ﻿package core
 
-import "github.com/martinlindhe/unit"
+import (
+	"github.com/martinlindhe/unit"
+)
 
 // DefaultConverter is a no-op converter that always returns true.
 func DefaultConverter(_ *MetricEvent) bool {

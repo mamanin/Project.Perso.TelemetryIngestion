@@ -2,7 +2,7 @@ package main
 
 import (
 	"service.ingestion/external/messaging/eventhub"
-	"service.ingestion/external/storage"
+	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/core/processor"
 )
 
@@ -13,7 +13,7 @@ const (
 // Config holds the entire configuration for the application.
 type Config struct {
 	producer   processor.Config
-	checkpoint storage.Config
+	checkpoint container.Config
 	eventHub   struct {
 		metrics eventhub.SubscriberConfig
 		data    eventhub.Config

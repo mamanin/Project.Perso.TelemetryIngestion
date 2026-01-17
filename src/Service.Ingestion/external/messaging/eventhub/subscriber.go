@@ -9,7 +9,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"service.ingestion/external/messaging"
 	"service.ingestion/external/observability/logger"
-	"service.ingestion/external/storage"
+	"service.ingestion/external/storage/container"
 )
 
 // Subscriber implements the messaging.Subscriber interface for Azure Event Hub.
@@ -36,7 +36,7 @@ type SubscriberOption struct {
 }
 
 // NewSubscriber creates a new Event Hub subscriber.
-func NewSubscriber(logger logger.Logger, cfg SubscriberConfig, cp *storage.Checkpoint) (*Subscriber, error) {
+func NewSubscriber(logger logger.Logger, cfg SubscriberConfig, cp *container.Checkpoint) (*Subscriber, error) {
 	client, err := azeventhubs.NewConsumerClientFromConnectionString(cfg.ConnectionString, cfg.EventHubName, azeventhubs.DefaultConsumerGroup, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer client: %w", err)
@@ -114,16 +114,17 @@ func (s *Subscriber) processPartition(ctx context.Context, pc *azeventhubs.Proce
 
 // receiveEvents receives events from the given partition client and sends them to the queue.
 func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.ProcessorPartitionClient, queue chan messaging.RawEventBatch) {
-	checkpointTicker := time.NewTicker(3 * time.Minute)
-	defer checkpointTicker.Stop()
+	ct := time.NewTicker(3 * time.Minute)
+	defer ct.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-s.stopChan:
+			s.updateCheckpoint(ctx, pc)
 			return
-		case <-checkpointTicker.C:
+		case <-ct.C:
 			go s.updateCheckpoint(ctx, pc)
 		default:
 			start := time.Now()
@@ -157,7 +158,7 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 				s.mu.Unlock()
 			}
 
-			s.logger.Info("Receiver: %.2fμs: %d", float64(time.Since(start).Microseconds()), len(events))
+			s.logger.Info("R|%.2fμs|%de", float64(time.Since(start).Microseconds()), len(events))
 		}
 	}
 }

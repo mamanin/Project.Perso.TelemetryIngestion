@@ -2,9 +2,8 @@
 
 import (
 	"context"
-	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/mailru/easyjson"
 	"service.ingestion/external/messaging"
 	"service.ingestion/external/observability/logger"
 	"service.ingestion/internal/core"
@@ -30,24 +29,26 @@ func NewLegacyHandler(logger logger.Logger, publisher messaging.Publisher) proce
 func (h *LegacyHandler) Handle(ctx context.Context, batch []*pkg.TelemetryLegacyEvent) {
 	var events [][]byte
 
+	var me core.MetricEvent
 	for _, event := range batch {
-		me := core.MetricEvent{
-			SensorPath: core.FormatSensorPath(event.DeviceId, ""),
+		me = core.MetricEvent{
+			SensorPath: core.FormatSensorPath(event.DeviceId, core.Device),
 			Name:       "state",
 			Value:      event.State,
 			Timestamp:  event.Timestamp,
 		}
-		if bytes, err := json.Marshal(me); err == nil {
+		if bytes, err := easyjson.Marshal(me); err == nil {
 			events = append(events, bytes)
 		}
 
 		me = core.MetricEvent{
-			SensorPath: core.FormatSensorPath(event.DeviceId, ""),
+			SensorPath: core.FormatSensorPath(event.DeviceId, core.Device),
 			Name:       "uptime",
 			Value:      event.Uptime,
 			Timestamp:  event.Timestamp,
+			Unit:       "min",
 		}
-		if bytes, err := json.Marshal(me); err == nil {
+		if bytes, err := easyjson.Marshal(me); err == nil {
 			events = append(events, bytes)
 		}
 
@@ -56,8 +57,9 @@ func (h *LegacyHandler) Handle(ctx context.Context, batch []*pkg.TelemetryLegacy
 			Name:       "usage",
 			Value:      event.CpuUsage,
 			Timestamp:  event.Timestamp,
+			Unit:       "%",
 		}
-		if bytes, err := json.Marshal(me); err == nil {
+		if bytes, err := easyjson.Marshal(me); err == nil {
 			events = append(events, bytes)
 		}
 
@@ -66,8 +68,9 @@ func (h *LegacyHandler) Handle(ctx context.Context, batch []*pkg.TelemetryLegacy
 			Name:       "memory",
 			Value:      event.CpuMemory,
 			Timestamp:  event.Timestamp,
+			Unit:       "%",
 		}
-		if bytes, err := json.Marshal(me); err == nil {
+		if bytes, err := easyjson.Marshal(me); err == nil {
 			events = append(events, bytes)
 		}
 
@@ -76,8 +79,9 @@ func (h *LegacyHandler) Handle(ctx context.Context, batch []*pkg.TelemetryLegacy
 			Name:       "temperature",
 			Value:      event.CpuTemperature,
 			Timestamp:  event.Timestamp,
+			Unit:       "°C",
 		}
-		if bytes, err := json.Marshal(me); err == nil {
+		if bytes, err := easyjson.Marshal(me); err == nil {
 			events = append(events, bytes)
 		}
 
@@ -86,16 +90,14 @@ func (h *LegacyHandler) Handle(ctx context.Context, batch []*pkg.TelemetryLegacy
 			Name:       "latency",
 			Value:      event.NetworkLatency,
 			Timestamp:  event.Timestamp,
+			Unit:       "µs",
 		}
-		if bytes, err := json.Marshal(me); err == nil {
+		if bytes, err := easyjson.Marshal(me); err == nil {
 			events = append(events, bytes)
 		}
 	}
 
-	tCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := h.publisher.PublishBatch(tCtx, events); err != nil {
+	if err := h.publisher.PublishBatch(ctx, events); err != nil {
 		h.logger.Error(err, "Error publishing metric updates: %v", err)
 	}
 }

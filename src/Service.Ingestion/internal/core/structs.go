@@ -1,11 +1,16 @@
 ﻿package core
 
+//>easyjson .\internal\core\structs.go
+
 import (
 	"strconv"
 	"strings"
+	"time"
 )
 
 // MetricEvent represents a single metric data point.
+//
+//easyjson:json
 type MetricEvent struct {
 	SensorPath string `json:"sp"`
 	Name       string `json:"n"`
@@ -26,12 +31,12 @@ func (e *MetricEvent) GetMetricRule() *MetricRuleProvider {
 
 // GetMetricKey generates a unique key for the MetricEvent by combining the sensor path and metric name.
 func (e *MetricEvent) GetMetricKey() string {
-	return "service.ingestion:metric.update:" + strings.ReplaceAll(e.SensorPath[1:], "/", ":") + ":" + e.Name + ":" + strconv.FormatInt(roundTo2Minutes(e.Timestamp), 10)
+	return "service.ingestion:metric.update:" + strings.ReplaceAll(e.SensorPath[1:], "/", ":") + ":" + e.Name + ":" + strconv.FormatInt(roundTo5Minutes(e.Timestamp), 10)
 }
 
-// roundTo2Minutes rounds the given timestamp (in seconds) up to the nearest 2-minute interval.
-func roundTo2Minutes(timestamp int64) int64 {
-	const fiveMinutes = int64(120) // 2 minutes = 120 seconds
+// roundTo5Minutes rounds the given timestamp (in seconds) up to the nearest 5-minute interval.
+func roundTo5Minutes(timestamp int64) int64 {
+	const fiveMinutes = int64(300) // 5 minutes = 300 seconds
 	remainder := timestamp % fiveMinutes
 
 	if remainder == 0 {
@@ -63,6 +68,19 @@ type MetricValidator = func(event *MetricEvent) bool
 
 // Validate applies the validator function to the given MetricEvent.
 func (mr MetricRules) Validate(event *MetricEvent) bool {
-	mr.converter(event)
+	if !mr.converter(event) {
+		return false
+	}
 	return mr.validator(event)
+}
+
+// DataMetric represents the structure of a metric data point to be ingested into storage.
+//
+//easyjson:json
+type DataMetric struct {
+	Timestamp time.Time `json:"timestamp"`
+	DeviceId  string    `json:"device_id"`
+	Metric    string    `json:"metric"`
+	Value     any       `json:"value"`
+	Unit      string    `json:"unit,omitempty"`
 }
