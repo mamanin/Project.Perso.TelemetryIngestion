@@ -9,8 +9,8 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"service.ingestion/external/cache/redis"
 	"service.ingestion/external/messaging"
-	"service.ingestion/external/observability/logger"
 	"service.ingestion/internal/core"
+	"service.ingestion/internal/core/observability/logger"
 	"service.ingestion/internal/core/processor"
 )
 
@@ -36,7 +36,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 	rp := h.redis.Pipeline()
 
 	for _, event := range batch {
-		rules := event.GetMetricRule()
+		rules := event.Rule()
 		if rules == nil {
 			h.logger.Warn("No metric rules found for sensor path: %s", event.SensorPath)
 			continue
@@ -52,7 +52,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 			continue
 		}
 
-		key := event.GetMetricKey()
+		key := event.CacheKey()
 		m := &redis.ItemProcess[core.MetricEvent]{
 			Key:    key,
 			Item:   event,

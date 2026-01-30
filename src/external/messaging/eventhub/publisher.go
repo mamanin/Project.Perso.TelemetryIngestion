@@ -14,7 +14,12 @@ type Publisher struct {
 }
 
 // NewPublisher creates a new Event Hub publisher.
-func NewPublisher(cfg Config) (*Publisher, error) {
+func NewPublisher(_ Config) (*Publisher, error) {
+	panic("not implemented")
+}
+
+// NewPublisherForAspire creates a new Event Hub publisher for Aspire configuration.
+func NewPublisherForAspire(cfg AspireConfig) (*Publisher, error) {
 	client, err := azeventhubs.NewProducerClientFromConnectionString(cfg.ConnectionString, cfg.EventHubName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create event hub producer client: %w", err)

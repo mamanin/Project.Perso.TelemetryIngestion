@@ -2,12 +2,11 @@
 
 import (
 	"context"
-	"strings"
 	"time"
 
-	"service.ingestion/external/observability/logger"
 	"service.ingestion/external/storage/adx"
 	"service.ingestion/internal/core"
+	"service.ingestion/internal/core/observability/logger"
 	"service.ingestion/internal/core/processor"
 )
 
@@ -30,9 +29,16 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 	metrics := make([]core.DataMetric, 0, len(batch))
 
 	for _, event := range batch {
+		id, s, ok := event.Origin()
+		if !ok {
+			h.logger.Warn("Invalid sensor path: %s", event.SensorPath)
+			continue
+		}
+
 		metrics = append(metrics, core.DataMetric{
 			Timestamp: time.Unix(event.Timestamp, 0).UTC(),
-			DeviceId:  strings.Split(event.SensorPath, "/")[2],
+			DeviceId:  id,
+			Sensor:    s,
 			Metric:    event.Name,
 			Value:     event.Value,
 			Unit:      event.Unit,

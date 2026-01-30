@@ -8,8 +8,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"service.ingestion/external/messaging"
-	"service.ingestion/external/observability/logger"
 	"service.ingestion/external/storage/container"
+	"service.ingestion/internal/core/observability/logger"
 )
 
 // Subscriber implements the messaging.Subscriber interface for Azure Event Hub.
@@ -36,7 +36,12 @@ type SubscriberOption struct {
 }
 
 // NewSubscriber creates a new Event Hub subscriber.
-func NewSubscriber(logger logger.Logger, cfg SubscriberConfig, cp *container.Checkpoint) (*Subscriber, error) {
+func NewSubscriber(_ logger.Logger, _ SubscriberConfig, _ *container.Checkpoint) (*Subscriber, error) {
+	panic("not implemented")
+}
+
+// NewSubscriberForAspire creates a new Event Hub subscriber for Aspire configuration.
+func NewSubscriberForAspire(logger logger.Logger, cfg AspireSubscriberConfig, cp *container.Checkpoint) (*Subscriber, error) {
 	client, err := azeventhubs.NewConsumerClientFromConnectionString(cfg.ConnectionString, cfg.EventHubName, azeventhubs.DefaultConsumerGroup, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer client: %w", err)

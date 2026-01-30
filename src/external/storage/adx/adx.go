@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/Azure/azure-kusto-go/kusto"
 	"github.com/Azure/azure-kusto-go/kusto/ingest"
 	"github.com/mailru/easyjson"
-	"service.ingestion/external/observability/logger"
+	"service.ingestion/internal/core/observability/logger"
 )
 
 // Client handles ingestion into Azure Data Explorer.
@@ -21,33 +20,31 @@ type Client[T easyjson.Marshaler] struct {
 
 // Config holds configuration for the Azure Data Explorer client.
 type Config struct {
+	// TODO
+}
+
+// AspireConfig holds configuration for the Aspire Azure Data Explorer client.
+type AspireConfig struct {
 	Endpoint string
 	Database string
 	Table    string
 }
 
 // NewClient creates a new adx.Client based on the provided configuration.
-func NewClient[T easyjson.Marshaler](cfg *Config, logger logger.Logger) (*Client[T], error) {
-	kcsb := kusto.NewConnectionStringBuilder(cfg.Endpoint)
-	// TODO: check this
-	if strings.HasPrefix(cfg.Endpoint, "https://") {
-		kcsb = kcsb.WithDefaultAzureCredential()
-	}
+func NewClient[T easyjson.Marshaler](_ Config, _ logger.Logger) (*Client[T], error) {
+	// kusto_conn_string.WithDefaultAzureCredential()
+	// ingestor, err = ingest.New(client, cfg.Database, cfg.Table)
+	panic("not implemented")
+}
 
-	client, err := kusto.New(kcsb)
+// NewClientForAspire creates a new adx.Client for Aspire based on the provided configuration.
+func NewClientForAspire[T easyjson.Marshaler](cfg AspireConfig, logger logger.Logger) (*Client[T], error) {
+	client, err := kusto.New(kusto.NewConnectionStringBuilder(cfg.Endpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kusto client: %w", err)
 	}
 
-	var ingestor ingest.Ingestor
-	if strings.HasPrefix(cfg.Endpoint, "https://") {
-		// Production/Cloud: Use default queued ingestion
-		ingestor, err = ingest.New(client, cfg.Database, cfg.Table)
-	} else {
-		// Emulator/HTTP: Use streaming ingestion
-		ingestor, err = ingest.NewStreaming(client, cfg.Database, cfg.Table)
-	}
-
+	ingestor, err := ingest.NewStreaming(client, cfg.Database, cfg.Table)
 	if err != nil {
 		if err = client.Close(); err != nil {
 			return nil, fmt.Errorf("failed to close kusto client after ingestor creation failure: %w", err)

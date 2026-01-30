@@ -5,8 +5,8 @@ import (
 
 	"github.com/mailru/easyjson"
 	"service.ingestion/external/messaging"
-	"service.ingestion/external/observability/logger"
 	"service.ingestion/internal/core"
+	"service.ingestion/internal/core/observability/logger"
 	"service.ingestion/internal/core/processor"
 	"service.ingestion/pkg"
 )

@@ -18,10 +18,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	connectionString := strings.TrimSpace(os.Getenv("ConnectionStrings__pocitpevh001"))
+	connectionString := strings.TrimSpace(os.Getenv("ConnectionStrings__tispocevh001"))
 	hubName := strings.TrimSpace(os.Getenv("TELEMETRY_RAW_EVENTHUBNAME"))
 
-	sender, err := eventhub.NewPublisher(eventhub.Config{
+	sender, err := eventhub.NewPublisherForAspire(eventhub.AspireConfig{
 		ConnectionString: connectionString,
 		EventHubName:     hubName,
 	})

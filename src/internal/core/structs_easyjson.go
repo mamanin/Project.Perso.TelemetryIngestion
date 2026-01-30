@@ -162,6 +162,12 @@ func easyjson6a975c40DecodeServiceIngestionInternalCore1(in *jlexer.Lexer, out *
 			} else {
 				out.DeviceId = string(in.String())
 			}
+		case "sensor":
+			if in.IsNull() {
+				in.Skip()
+			} else {
+				out.Sensor = string(in.String())
+			}
 		case "metric":
 			if in.IsNull() {
 				in.Skip()
@@ -205,6 +211,11 @@ func easyjson6a975c40EncodeServiceIngestionInternalCore1(out *jwriter.Writer, in
 		const prefix string = ",\"device_id\":"
 		out.RawString(prefix)
 		out.String(string(in.DeviceId))
+	}
+	{
+		const prefix string = ",\"sensor\":"
+		out.RawString(prefix)
+		out.String(string(in.Sensor))
 	}
 	{
 		const prefix string = ",\"metric\":"

@@ -1,0 +1,13 @@
+.execute database script <|
+
+// Create 1-day aggregated metrics view
+//  - Soft delete disabled
+//  - Hot caching for 365 days
+.create-or-alter materialized-view with (docstring='1 day stats') metrics_1d on table metrics
+    {
+    metrics_aggregator(1d)
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by timestamp, device_id, sensor
+    }
+
+// View configuration
+.alter materialized-view metrics_1d policy caching hot = 365d;

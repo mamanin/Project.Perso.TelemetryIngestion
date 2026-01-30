@@ -13,7 +13,14 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app, err := NewApp(ctx)
+	var app AppManager
+	var err error
+	switch os.Getenv("deployment-environment") {
+	case "Aspire":
+		app, err = NewAspireApp(ctx)
+	default:
+		app, err = NewApp(ctx)
+	}
 	if err != nil {
 		fmt.Printf("Failed to initialize silver worker: %s", err.Error())
 		os.Exit(1)

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"service.ingestion/external/messaging"
-	"service.ingestion/external/observability/logger"
+	"service.ingestion/internal/core/observability/logger"
 )
 
 // Processor manages the processing of MetricEvent messages using a pool of workers.

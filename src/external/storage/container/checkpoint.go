@@ -9,6 +9,10 @@ import (
 
 // Config holds the configuration for the Blob Storage checkpoint store.
 type Config struct {
+	// TODO
+}
+
+type AspireConfig struct {
 	ConnectionString string
 	ContainerName    string
 }
@@ -17,7 +21,12 @@ type Config struct {
 type Checkpoint = checkpoints.BlobStore
 
 // NewCheckpoint creates a new Blob Storage checkpoint store.
-func NewCheckpoint(cfg Config) (*Checkpoint, error) {
+func NewCheckpoint(_ Config) (*Checkpoint, error) {
+	panic("not implemented")
+}
+
+// NewCheckpointForAspire creates a new Blob Storage checkpoint store for Aspire based on the provided configuration.
+func NewCheckpointForAspire(cfg AspireConfig) (*Checkpoint, error) {
 	client, err := container.NewClientFromConnectionString(cfg.ConnectionString, cfg.ContainerName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create blob container client: %w", err)

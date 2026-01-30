@@ -1,0 +1,60 @@
+.execute database script <|
+
+// Create metrics table
+//  - Retention set to 3 days
+//  - Hot caching for 1 day
+.create-merge table metrics (
+    timestamp: datetime, 
+    device_id: string,
+    sensor: string, 
+    metric: string,
+    value: dynamic,
+    unit: string
+    );
+
+// View configuration
+.alter-merge table metrics policy retention softdelete = 3d recoverability = disabled;
+.alter table metrics policy caching hot = 1d;
+
+// Function to aggregate metrics over a specified period
+.create-or-alter function with (docstring='Aggregate metrics over a specified period') metrics_aggregator(period: timespan)
+ {
+     metrics
+    | summarize
+        computed_value = case(
+            take_any(sensor) == "device", case(
+                take_any(metric) == "state", iif(countif(tostring(value) == "on") > 0, "on", arg_max(timestamp, value).value),
+                take_any(metric) == "uptime", arg_max(timestamp, value).value,
+                ""
+            ),
+            take_any(sensor) == "device.network", case(
+                take_any(metric) == "bytes_received", arg_max(timestamp, value).value,
+                take_any(metric) == "bytes_sent", arg_max(timestamp, value).value,
+                take_any(metric) == "packets_dropped", arg_max(timestamp, value).value,
+                ""
+            ),
+            take_any(sensor) == "device.storage", case(
+                take_any(metric) == "used_size", arg_max(timestamp, value).value,
+                take_any(metric) == "free_size", arg_max(timestamp, value).value,
+                take_any(metric) == "health", iif(countif(tostring(value) == "good") > 0, "good", arg_max(timestamp, value).value),
+                ""
+            ),
+            take_any(sensor) == "device.battery", case(
+                take_any(metric) == "time_to_empty", arg_max(timestamp, value).value,
+                ""
+            ),
+            gettype(take_any(value)) in ("real", "long", "int", "double"), tostring(avg(todouble(value))),
+            ""
+        ),
+        arg_max(timestamp, last_value = value)
+        by bin(timestamp, 1d), device_id, sensor, metric
+    | project
+        timestamp,
+        device_id,
+        sensor,
+        metric,
+        value = case(
+            isnotempty(computed_value), coalesce(todynamic(tostring(todouble(computed_value))), todynamic(computed_value)), 
+            last_value
+        )
+ }

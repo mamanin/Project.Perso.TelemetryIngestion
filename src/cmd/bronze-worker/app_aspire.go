@@ -1,0 +1,120 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"service.ingestion/external/messaging/eventhub"
+	"service.ingestion/external/storage/container"
+	"service.ingestion/internal/bronze"
+	"service.ingestion/internal/core/observability/logger"
+	"service.ingestion/internal/core/processor"
+	"service.ingestion/pkg"
+)
+
+// AspireApp represents the entire application with all its dependencies.
+type AspireApp struct {
+	cfg *AspireConfig
+
+	logger       logger.Logger
+	orchestrator *processor.Processor
+}
+
+// NewAspireApp creates and initializes a new AspireApp instance with all dependencies.
+func NewAspireApp(ctx context.Context) (AppManager, error) {
+	tCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	log, err := logger.NewOtelLogger(
+		tCtx,
+		attribute.String("service.layer", "bronze-layer"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize open telemetry logger: %w", err)
+	}
+
+	cfg, err := LoadAspireConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	app := &AspireApp{
+		cfg:    cfg,
+		logger: log,
+	}
+
+	if err = app.initializeOrchestrator(); err != nil {
+		return nil, fmt.Errorf("failed to initialize processor: %w", err)
+	}
+
+	return app, nil
+}
+
+// Start starts all application services.
+func (a *AspireApp) Start(ctx context.Context) error {
+	a.logger.Info("Starting bronze worker...")
+
+	a.orchestrator.Start(ctx)
+
+	a.logger.Info("Bronze worker started successfully")
+	return nil
+}
+
+// Stop gracefully shuts down all application services.
+func (a *AspireApp) Stop(ctx context.Context) {
+	a.logger.Info("Shutting down bronze worker...")
+
+	tCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	if err := a.orchestrator.Stop(tCtx); err != nil {
+		a.logger.Error(err, "Error shutting down subscriber: %v", err)
+	}
+
+	a.logger.Info("Bronze worker shutdown complete")
+}
+
+// initializeOrchestrator sets up the orchestrator with its dependencies.
+func (a *AspireApp) initializeOrchestrator() error {
+	p, s, err := a.initializeMessaging()
+	if err != nil {
+		return fmt.Errorf("failed to initialize event hub subscriber: %w", err)
+	}
+
+	o := processor.NewProcessor(a.cfg.processor, a.logger, s,
+		func(i int) processor.Worker {
+			return bronze.NewWorker(i, a.logger,
+				[]processor.VersionAdapter{
+					processor.NewHandlerAdapter(pkg.V2, a.cfg.eventhubSubscriber.BatchSize, bronze.NewV2Handler(a.logger, p)),
+					processor.NewHandlerAdapter(pkg.V1, a.cfg.eventhubSubscriber.BatchSize, bronze.NewV1Handler(a.logger, p)),
+				},
+				processor.NewHandlerAdapter(pkg.Legacy, a.cfg.eventhubSubscriber.BatchSize, bronze.NewLegacyHandler(a.logger, p)),
+			)
+		},
+	)
+
+	a.orchestrator = o
+	return nil
+}
+
+// initializeMessaging sets up the messaging services.
+func (a *AspireApp) initializeMessaging() (*eventhub.Publisher, *eventhub.Subscriber, error) {
+	cp, err := container.NewCheckpointForAspire(a.cfg.container)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create checkpoint store: %w", err)
+	}
+
+	p, err := eventhub.NewPublisherForAspire(a.cfg.eventhubPublisher)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create event hub publisher: %w", err)
+	}
+
+	s, err := eventhub.NewSubscriberForAspire(a.logger, a.cfg.eventhubSubscriber, cp)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
+	}
+
+	return p, s, nil
+}

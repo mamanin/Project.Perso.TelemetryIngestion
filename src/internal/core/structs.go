@@ -3,10 +3,23 @@
 //>easyjson .\internal\core\structs.go
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// DataMetric represents the structure of a metric data point to be ingested into storage.
+//
+//easyjson:json
+type DataMetric struct {
+	Timestamp time.Time `json:"timestamp"`
+	DeviceId  string    `json:"device_id"`
+	Sensor    string    `json:"sensor"`
+	Metric    string    `json:"metric"`
+	Value     any       `json:"value"`
+	Unit      string    `json:"unit,omitempty"`
+}
 
 // MetricEvent represents a single metric data point.
 //
@@ -19,8 +32,23 @@ type MetricEvent struct {
 	Timestamp  int64  `json:"_ts"`
 }
 
-// GetMetricRule returns the MetricRuleProvider based on the sensor path.
-func (e *MetricEvent) GetMetricRule() *MetricRuleProvider {
+// Origin extracts the device id and sensor name from the SensorPath.
+//
+// See core.DevicePattern and core.SensorPattern for deconstruction of the SensorPath.
+func (e *MetricEvent) Origin() (string, string, bool) {
+	sps := strings.Split(e.SensorPath[1:], "/")
+	switch len(sps) {
+	case 2:
+		return sps[1], sps[0], true // core.DevicePattern metric with no sensor
+	case 3:
+		return sps[1], fmt.Sprintf("%s.%s", sps[0], sps[2]), true // core.SensorPattern metric
+	default:
+		return "", "", false
+	}
+}
+
+// Rule returns the MetricRuleProvider based on the sensor path.
+func (e *MetricEvent) Rule() *MetricRuleProvider {
 	for _, entry := range metricRuleMap {
 		if entry.pattern.MatchString(e.SensorPath) {
 			return entry.rules
@@ -29,20 +57,25 @@ func (e *MetricEvent) GetMetricRule() *MetricRuleProvider {
 	return nil
 }
 
-// GetMetricKey generates a unique key for the MetricEvent by combining the sensor path and metric name.
-func (e *MetricEvent) GetMetricKey() string {
-	return "service.ingestion:metric.update:" + strings.ReplaceAll(e.SensorPath[1:], "/", ":") + ":" + e.Name + ":" + strconv.FormatInt(roundTo5Minutes(e.Timestamp), 10)
+// CacheKey generates a unique cache key for the MetricEvent.
+//
+// See core.DevicePattern and core.SensorPattern for deconstruction of the SensorPath.
+func (e *MetricEvent) CacheKey() string {
+	return "service.ingestion:silver:metric.update" +
+		":" + strings.ReplaceAll(e.SensorPath[1:], "/", ":") +
+		":" + e.Name +
+		":" + strconv.FormatInt(roundTo2Minutes(e.Timestamp), 10)
 }
 
-// roundTo5Minutes rounds the given timestamp (in seconds) up to the nearest 5-minute interval.
-func roundTo5Minutes(timestamp int64) int64 {
-	const fiveMinutes = int64(300) // 5 minutes = 300 seconds
-	remainder := timestamp % fiveMinutes
+// roundTo2Minutes rounds the given timestamp (in seconds) up to the nearest 2-minute interval.
+func roundTo2Minutes(timestamp int64) int64 {
+	const twoMinutes = int64(120) // 2 minutes = 120 seconds
+	remainder := timestamp % twoMinutes
 
 	if remainder == 0 {
 		return timestamp
 	}
-	return timestamp + (fiveMinutes - remainder)
+	return timestamp + (twoMinutes - remainder)
 }
 
 // MetricRuleProvider contains a list of MetricRules associated with a specific source.
@@ -72,15 +105,4 @@ func (mr MetricRules) Validate(event *MetricEvent) bool {
 		return false
 	}
 	return mr.validator(event)
-}
-
-// DataMetric represents the structure of a metric data point to be ingested into storage.
-//
-//easyjson:json
-type DataMetric struct {
-	Timestamp time.Time `json:"timestamp"`
-	DeviceId  string    `json:"device_id"`
-	Metric    string    `json:"metric"`
-	Value     any       `json:"value"`
-	Unit      string    `json:"unit,omitempty"`
 }
