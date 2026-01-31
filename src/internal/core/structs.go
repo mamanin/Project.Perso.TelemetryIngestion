@@ -99,8 +99,8 @@ type MetricConverter = func(event *MetricEvent) bool
 // MetricValidator defines a function type for validating the value of a MetricEvent.
 type MetricValidator = func(event *MetricEvent) bool
 
-// Validate applies the validator function to the given MetricEvent.
-func (mr MetricRules) Validate(event *MetricEvent) bool {
+// ConvertAndValidate applies the validator function to the given MetricEvent.
+func (mr MetricRules) ConvertAndValidate(event *MetricEvent) bool {
 	if !mr.converter(event) {
 		return false
 	}

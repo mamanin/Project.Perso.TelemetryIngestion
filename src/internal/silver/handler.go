@@ -48,7 +48,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 			continue
 		}
 
-		if !mr.Validate(event) {
+		if !mr.ConvertAndValidate(event) {
 			continue
 		}
 
