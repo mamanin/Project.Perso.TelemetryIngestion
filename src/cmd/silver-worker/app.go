@@ -10,6 +10,7 @@ import (
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/core/observability/logger"
+	"service.ingestion/internal/core/observability/probes"
 	"service.ingestion/internal/core/processor"
 	"service.ingestion/internal/silver"
 )
@@ -24,9 +25,11 @@ type AppManager interface {
 type App struct {
 	cfg *Config
 
-	logger       logger.Logger
-	orchestrator *processor.Processor
-	redis        *redis.Client
+	logger        logger.Logger
+	orchestrator  *processor.Processor
+	redis         *redis.Client
+	subscriber    *eventhub.Subscriber
+	probesManager *probes.Manager
 }
 
 // NewApp creates and initializes a new App instance with all dependencies.
@@ -58,6 +61,10 @@ func NewApp(ctx context.Context) (AppManager, error) {
 		return nil, fmt.Errorf("failed to initialize processor: %w", err)
 	}
 
+	if err = app.initializeProbesManager(); err != nil {
+		return nil, fmt.Errorf("failed to initialize health manager: %w", err)
+	}
+
 	return app, nil
 }
 
@@ -65,7 +72,15 @@ func NewApp(ctx context.Context) (AppManager, error) {
 func (a *App) Start(ctx context.Context) error {
 	a.logger.Info("Starting silver worker...")
 
+	if err := a.probesManager.StartProbes(ctx); err != nil {
+		return fmt.Errorf("failed to start health probes: %w", err)
+	}
+
 	a.orchestrator.Start(ctx)
+
+	if err := a.probesManager.MarkProbeAs(probes.StartupProbeName, probes.ProbeStatusReady); err != nil {
+		a.logger.Error(err, "Unable to mark startup probe as ready: %v", err)
+	}
 
 	a.logger.Info("Silver worker started successfully")
 	return nil
@@ -75,7 +90,11 @@ func (a *App) Start(ctx context.Context) error {
 func (a *App) Stop(ctx context.Context) {
 	a.logger.Info("Shutting down silver worker...")
 
-	tCtx, cancel := context.WithTimeout(ctx, 100*time.Second)
+	if err := a.probesManager.StopProbes(); err != nil {
+		a.logger.Error(err, "Error stopping health manager: %v", err)
+	}
+
+	tCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
 	if err := a.orchestrator.Stop(tCtx); err != nil {
@@ -130,6 +149,7 @@ func (a *App) initializeMessaging() (*eventhub.Publisher, *eventhub.Subscriber, 
 		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}
 
+	a.subscriber = s
 	return p, s, nil
 }
 
@@ -138,4 +158,17 @@ func (a *App) initializeRedis() {
 	r := redis.NewRedis(redis.Config{})
 
 	a.redis = r
+}
+
+// initializeProbesManager sets up the health check manager.
+func (a *App) initializeProbesManager() error {
+	var err error
+
+	pm, err := probes.NewManager([]probes.Checker{a.subscriber}, a.logger)
+	if err != nil {
+		return fmt.Errorf("failed to create health manager: %w", err)
+	}
+
+	a.probesManager = pm
+	return nil
 }

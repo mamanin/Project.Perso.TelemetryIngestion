@@ -113,6 +113,9 @@ module kustoClusterDatabaseRoleAssignment './modules/rbac/rbac.kusto.database.mo
   }
 }
 
+// TODO: check for :
+// - add GOMAXPROCS '1' to env
+// - add import _ "go.uber.org/automaxprocs" to go app
 module containerApp './modules/containerapp.module.bicep' = {
   name: 'containerAppDeploy'
   params: {
@@ -175,14 +178,30 @@ module containerApp './modules/containerapp.module.bicep' = {
         value: version
       }
     ]
-    // TODO : add probes 
-    // probes: [
-    //   {
-    //     type: 'Startup'
-    //     scheme: 'TCP'
-    //     port: 8080
-    //     period: 10
-    //   }
-    // ]
+    probes: [
+      {
+        type: 'Startup'
+        scheme: 'TCP'
+        port: 8080
+        failureThreshold: 60
+        periodSeconds: 1
+      }
+      {
+        type: 'Liveness'
+        scheme: 'TCP'
+        port: 8081
+        failureThreshold: 5
+        periodSeconds: 5
+        initialDelaySeconds: 5
+      }
+      {
+        type: 'Readiness'
+        scheme: 'TCP'
+        port: 8082
+        failureThreshold: 30
+        periodSeconds: 3
+        initialDelaySeconds: 5
+      }
+    ]
   }
 }

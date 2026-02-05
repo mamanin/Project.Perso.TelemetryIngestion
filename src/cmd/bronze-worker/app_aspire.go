@@ -10,6 +10,7 @@ import (
 	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/bronze"
 	"service.ingestion/internal/core/observability/logger"
+	"service.ingestion/internal/core/observability/probes"
 	"service.ingestion/internal/core/processor"
 	"service.ingestion/pkg"
 )
@@ -18,8 +19,10 @@ import (
 type AspireApp struct {
 	cfg *AspireConfig
 
-	logger       logger.Logger
-	orchestrator *processor.Processor
+	logger        logger.Logger
+	orchestrator  *processor.Processor
+	subscriber    *eventhub.Subscriber
+	probesManager *probes.Manager
 }
 
 // NewAspireApp creates and initializes a new AspireApp instance with all dependencies.
@@ -49,6 +52,10 @@ func NewAspireApp(ctx context.Context) (AppManager, error) {
 		return nil, fmt.Errorf("failed to initialize processor: %w", err)
 	}
 
+	if err = app.initializeProbesManager(); err != nil {
+		return nil, fmt.Errorf("failed to initialize health manager: %w", err)
+	}
+
 	return app, nil
 }
 
@@ -56,7 +63,15 @@ func NewAspireApp(ctx context.Context) (AppManager, error) {
 func (a *AspireApp) Start(ctx context.Context) error {
 	a.logger.Info("Starting bronze worker...")
 
+	if err := a.probesManager.StartProbes(ctx); err != nil {
+		return fmt.Errorf("failed to start health probes: %w", err)
+	}
+
 	a.orchestrator.Start(ctx)
+
+	if err := a.probesManager.MarkProbeAs(probes.StartupProbeName, probes.ProbeStatusReady); err != nil {
+		a.logger.Error(err, "Unable to mark startup probe as ready: %v", err)
+	}
 
 	a.logger.Info("Bronze worker started successfully")
 	return nil
@@ -66,7 +81,11 @@ func (a *AspireApp) Start(ctx context.Context) error {
 func (a *AspireApp) Stop(ctx context.Context) {
 	a.logger.Info("Shutting down bronze worker...")
 
-	tCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	if err := a.probesManager.StopProbes(); err != nil {
+		a.logger.Error(err, "Error stopping health manager: %v", err)
+	}
+
+	tCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
 	if err := a.orchestrator.Stop(tCtx); err != nil {
@@ -116,5 +135,19 @@ func (a *AspireApp) initializeMessaging() (*eventhub.Publisher, *eventhub.Subscr
 		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}
 
+	a.subscriber = s
 	return p, s, nil
+}
+
+// initializeProbesManager sets up the health check manager.
+func (a *AspireApp) initializeProbesManager() error {
+	var err error
+
+	pm, err := probes.NewManager([]probes.Checker{a.subscriber}, a.logger)
+	if err != nil {
+		return fmt.Errorf("failed to create health manager: %w", err)
+	}
+
+	a.probesManager = pm
+	return nil
 }

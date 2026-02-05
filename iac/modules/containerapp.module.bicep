@@ -115,9 +115,10 @@ resource containerApp 'Microsoft.App/containerApps@2025-10-02-preview' = {
           env: env
           probes: [for prob in probes: {
             type: prob.type
-            initialDelaySeconds: 30
-            periodSeconds: prob.period
-            timeoutSeconds: 1
+            initialDelaySeconds: prob.?initialDelaySeconds ?? 1
+            periodSeconds: prob.periodSeconds
+            timeoutSeconds: prob.?timeoutSeconds ?? 1
+            failureThreshold: prob.?failureThreshold ?? 3
             tcpSocket: prob.scheme == 'TCP' ? {
               port: prob.?port ?? applicationPort
             } : null

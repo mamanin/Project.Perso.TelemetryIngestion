@@ -140,7 +140,7 @@ func (ls *logSink) emit(ctx context.Context, severity log.Severity, err error, f
 
 // Debug logs a debug-level message.
 func (ls *logSink) Debug(format string, args ...any) {
-	toCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	toCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	ls.emit(toCtx, log.SeverityDebug, nil, format, args...)
@@ -148,7 +148,7 @@ func (ls *logSink) Debug(format string, args ...any) {
 
 // Info logs an info-level message.
 func (ls *logSink) Info(format string, args ...any) {
-	toCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	toCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	ls.emit(toCtx, log.SeverityInfo, nil, format, args...)
@@ -156,7 +156,7 @@ func (ls *logSink) Info(format string, args ...any) {
 
 // Warn logs a warning-level message.
 func (ls *logSink) Warn(format string, args ...any) {
-	toCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	toCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	ls.emit(toCtx, log.SeverityWarn, nil, format, args...)
@@ -164,7 +164,7 @@ func (ls *logSink) Warn(format string, args ...any) {
 
 // Error logs an error-level message along with an error.
 func (ls *logSink) Error(err error, format string, args ...any) {
-	toCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	toCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	ls.emit(toCtx, log.SeverityError, err, format, args...)
@@ -172,7 +172,7 @@ func (ls *logSink) Error(err error, format string, args ...any) {
 
 // Fatal logs a fatal-level message along with an error and exits the application.
 func (ls *logSink) Fatal(err error, format string, args ...any) {
-	toCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	toCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	ls.emit(toCtx, log.SeverityFatal, err, format, args...)

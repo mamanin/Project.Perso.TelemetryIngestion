@@ -16,8 +16,9 @@ import (
 type Subscriber struct {
 	options SubscriberOption
 
-	mu     sync.Mutex
-	latest *azeventhubs.ReceivedEventData
+	mu        sync.Mutex
+	partition string
+	latest    *azeventhubs.ReceivedEventData
 
 	logger    logger.Logger
 	client    *azeventhubs.ConsumerClient
@@ -91,7 +92,10 @@ func (s *Subscriber) Subscribe(ctx context.Context, queue chan messaging.RawEven
 					time.Sleep(1 * time.Second)
 					continue
 				}
-				s.logger.Debug("Partition client acquired: %s", pc.PartitionID())
+
+				s.mu.Lock()
+				s.partition = pc.PartitionID()
+				s.mu.Unlock()
 
 				s.processPartition(ctx, pc, queue)
 			}
@@ -134,7 +138,7 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 		default:
 			start := time.Now()
 
-			reCtx, cancel := context.WithTimeout(ctx, time.Minute)
+			reCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 			events, err := pc.ReceiveEvents(reCtx, s.options.batchSize, nil)
 			cancel()
 
@@ -168,24 +172,6 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 	}
 }
 
-// Close releases resources associated with the subscriber.
-func (s *Subscriber) Close(ctx context.Context) error {
-	defer func(dCtx context.Context, c *azeventhubs.ConsumerClient) {
-		if err := c.Close(dCtx); err != nil {
-			s.logger.Error(err, "Failed to close event hub consumer client: %v", err)
-		}
-	}(ctx, s.client)
-
-	close(s.stopChan)
-
-	select {
-	case <-s.doneChan:
-		return nil
-	case <-ctx.Done():
-		return fmt.Errorf("timeout waiting for receiver to stop")
-	}
-}
-
 // updateCheckpoint updates the checkpoint for the latest processed event.
 func (s *Subscriber) updateCheckpoint(ctx context.Context, pc *azeventhubs.ProcessorPartitionClient) {
 	s.mu.Lock()
@@ -201,5 +187,39 @@ func (s *Subscriber) updateCheckpoint(ctx context.Context, pc *azeventhubs.Proce
 
 	if err := pc.UpdateCheckpoint(ctx, le, nil); err != nil {
 		s.logger.Error(err, "Failed to final checkpoint for partition %s: %v", pc.PartitionID(), err)
+	}
+}
+
+// IsHealthy checks if the subscriber is healthy by verifying connectivity to the Event Hub partition.
+func (s *Subscriber) IsHealthy(ctx context.Context) bool {
+	s.mu.Lock()
+	pId := s.partition
+	s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+
+	if _, err := s.client.GetPartitionProperties(ctx, pId, nil); err != nil {
+		return false
+	}
+
+	return true
+}
+
+// Close releases resources associated with the subscriber.
+func (s *Subscriber) Close(ctx context.Context) error {
+	defer func(dCtx context.Context, c *azeventhubs.ConsumerClient) {
+		if err := c.Close(dCtx); err != nil {
+			s.logger.Error(err, "Failed to close event hub consumer client: %v", err)
+		}
+	}(ctx, s.client)
+
+	close(s.stopChan)
+
+	select {
+	case <-s.doneChan:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("timeout waiting for receiver to stop")
 	}
 }

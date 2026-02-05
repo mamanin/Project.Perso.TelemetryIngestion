@@ -16,22 +16,8 @@ var metricsDb = cluster
     .AddReadWriteDatabase("telemetries")
 /*
     .WithCreationScript("""
-        .execute database script <|
-            .create-merge table metrics (timestamp: datetime, device_id: string, sensor: string, metric: string, value: dynamic, unit: string);
-            .alter-merge table metrics policy retention softdelete = 3d;
-            .alter table metrics policy caching hot = 12h;
-            .alter table metrics policy streamingingestion enable;
-        """)
-    .WithCreationScript("""
-        .execute database script <|
-            .create-or-alter materialized-view with (docstring='10 minute stats') metrics_10m on table metrics
-                {
-                metrics
-                | summarize telemetry = make_bag(bag_pack(metric, value)) by bin(timestamp, 10m), device_id, sensor
-                }
-            .alter-merge materialized-view metrics_10m policy retention softdelete = 30d recoverability = disabled;
-            .alter materialized-view metrics_10m policy caching hot = 7d;
-        """)
+        .alter table metrics policy streamingingestion enable;
+    """)
 */
     ;
 
