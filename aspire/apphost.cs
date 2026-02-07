@@ -48,7 +48,7 @@ var cache = builder
 
 // Add Golang workers
 var bronze = builder
-    .AddGolangApp("bronze", "../src/cmd/bronze-worker")
+    .AddGolangApp("bronze", "../service.ingestion/src/cmd/bronze-worker")
     .WaitFor(eventHub)
     .WaitFor(blob)
     .WithReference(eventHub)
@@ -61,7 +61,7 @@ var bronze = builder
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 var silver = builder
-    .AddGolangApp("silver", "../src/cmd/silver-worker")
+    .AddGolangApp("silver", "../service.ingestion/src/cmd/silver-worker")
     .WaitFor(eventHub)
     .WaitFor(blob)
     .WaitFor(cache)
@@ -76,7 +76,7 @@ var silver = builder
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 var gold = builder
-    .AddGolangApp("gold", "../src/cmd/gold-worker")
+    .AddGolangApp("gold", "../service.ingestion/src/cmd/gold-worker")
     .WaitFor(metricsDb)
     .WaitFor(eventHub)
     .WaitFor(blob)
@@ -91,19 +91,19 @@ var gold = builder
 
 // Add test sender
 _ = builder
-    .AddGolangApp("v2-sender", "../src/cmd/telemetry-senders/v2-sender")
+    .AddGolangApp("v2-sender", "../service.ingestion/src/cmd/telemetry-senders/v2-sender")
     .WithReference(eventHub)
     .WithReference(raw)
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 _ = builder
-    .AddGolangApp("v1-sender", "../src/cmd/telemetry-senders/v1-sender")
+    .AddGolangApp("v1-sender", "../service.ingestion/src/cmd/telemetry-senders/v1-sender")
     .WithReference(eventHub)
     .WithReference(raw)
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 _ = builder
-    .AddGolangApp("legacy-sender", "../src/cmd/telemetry-senders/legacy-sender")
+    .AddGolangApp("legacy-sender", "../service.ingestion/src/cmd/telemetry-senders/legacy-sender")
     .WithReference(eventHub)
     .WithReference(raw)
     .WithOtlpExporter(OtlpProtocol.Grpc);
