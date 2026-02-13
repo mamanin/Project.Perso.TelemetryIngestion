@@ -1,0 +1,172 @@
+﻿@layer tokens, typography, utilities;
+
+@layer tokens {
+  :root {
+    --font-sans: "Inter", system-ui;
+    --font-serif: "Merriweather", Georgia, serif;
+    --font-mono: "Fira Code";
+
+    --text-xs: clamp(0.7rem, 0.65rem + 0.25vw, 0.75rem);
+    --text-sm: clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem);
+    --text-base: clamp(0.95rem, 0.9rem + 0.25vw, 1rem);
+    --text-lg: clamp(1.1rem, 1rem + 0.5vw, 1.25rem);
+    --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+    --text-2xl: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+    --text-3xl: clamp(1.85rem, 1.5rem + 1.5vw, 2.5rem);
+    --text-4xl: clamp(2.25rem, 1.75rem + 2vw, 3.5rem);
+
+    --weight-light: 300;
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    --leading-tight: 1.2;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.75;
+
+    --tracking-tight: -0.02em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0.05em;
+    --tracking-wider: 0.1em;
+  }
+}
+
+@layer typography {
+  .text-display {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-4xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .text-h1 {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .text-h2 {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .text-h3 {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .text-body {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-base);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .text-body-lg {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .text-body-sm {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .text-caption {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .text-overline {
+    font-family: var(--font-sans), sans-serif;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-wider);
+    text-transform: uppercase;
+  }
+
+  .text-code {
+    font-family: var(--font-mono), monospace;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-relaxed);
+    letter-spacing: var(--tracking-normal);
+  }
+}
+
+@layer utilities {
+  .font-light {
+    font-weight: var(--weight-light);
+  }
+
+  .font-regular {
+    font-weight: var(--weight-regular);
+  }
+
+  .font-medium {
+    font-weight: var(--weight-medium);
+  }
+
+  .font-semibold {
+    font-weight: var(--weight-semibold);
+  }
+
+  .font-bold {
+    font-weight: var(--weight-bold);
+  }
+
+  .size-xs {
+    font-size: var(--text-xs);
+  }
+
+  .size-sm {
+    font-size: var(--text-sm);
+  }
+
+  .size-base {
+    font-size: var(--text-base);
+  }
+
+  .size-lg {
+    font-size: var(--text-lg);
+  }
+
+  .size-xl {
+    font-size: var(--text-xl);
+  }
+
+  .italic {
+    font-style: italic;
+  }
+
+  .uppercase {
+    text-transform: uppercase;
+  }
+
+  .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

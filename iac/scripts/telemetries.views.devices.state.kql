@@ -1,0 +1,21 @@
+.execute database script <|
+
+// Create devices status materialized view
+//  - Soft delete disabled
+//  - Hot caching for 365 days
+.create-or-alter materialized-view with (docstring='devices status') devices_state on table metrics
+    {
+     devices_status_monitor()
+    | join kind=inner (
+         devices_sensors_monitor() 
+        | where device_id == device_id
+        | project device_id, sensors
+        )
+        on device_id
+    | summarize
+        arg_max(last_update, status, sensors)
+        by device_id
+    }
+
+// View configuration
+.alter materialized-view devices_state policy caching hot = 365d;

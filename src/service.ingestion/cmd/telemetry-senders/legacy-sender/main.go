@@ -72,7 +72,7 @@ func generateTelemetries() pkg.TelemetryLegacyEvent {
 		CpuMemory:      rand.Float64() * 100,
 		CpuUsage:       rand.Float64() * 100,
 		Uptime:         rand.Float64() * 3600,
-		State:          []string{"on", "off", "booting", "maintenance", "error"}[rand.Intn(5)],
+		State:          []string{"on", "booting", "warning", "error"}[rand.Intn(4)],
 		CpuTemperature: 20 + rand.Float64()*100,
 		NetworkLatency: rand.Float64(),
 	}

@@ -1,0 +1,28 @@
+package views
+
+templ mainLayout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title }</title>
+			<link rel="stylesheet" href="/static/css/style.css"/>
+			<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+			<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/min/moment.min.js"></script>
+			<script>
+        document.addEventListener(
+          "htmx:load",
+          e => e.detail.elt
+            .querySelectorAll("time[datetime]")
+            .forEach(el => el.textContent = moment(el.getAttribute("datetime")).local().format(el.dataset.format))
+        )
+      </script>
+		</head>
+		<body>
+			<main class="container">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}

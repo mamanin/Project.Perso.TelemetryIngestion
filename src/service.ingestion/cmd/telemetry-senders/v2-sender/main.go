@@ -80,7 +80,7 @@ func generateTelemetries() pkg.TelemetryV2Event {
 
 	gens := []metricGen{
 		// Device
-		{"device", "state", "", func() any { return []string{"on", "off", "booting", "maintenance", "error"}[rand.Intn(5)] }},
+		{"device", "state", "", func() any { return []string{"on", "booting", "warning", "error"}[rand.Intn(4)] }},
 		{"device", "uptime", "s", func() any { return rand.Float64() * 100000 }},
 		{"device", "battery_level", "%", func() any { return rand.Float64() * 100 }},
 		{"device", "firmware_version", "", func() any { return "1.2.3" }},

@@ -5,7 +5,7 @@
 //  - Hot caching for 365 days
 .create-or-alter materialized-view with (docstring='1 day stats') metrics_1d on table metrics
     {
-    metrics_aggregator(1d)
+     metrics_aggregator(1d)
     | summarize telemetry = make_bag(bag_pack(metric, value)) by timestamp, device_id, sensor
     }
 

@@ -1,0 +1,11 @@
+﻿:root {
+  --primary-bg-color: #0f0f0f;
+  --primary-border-color: #333;
+  --primary-text-color: white;
+
+  --secondary-bg-color: #1a1a1a;
+  --secondary-text-color: #aaa;
+
+  --tertiary-bg-color: #262626;
+  --tertiary-text-color: #666;
+}

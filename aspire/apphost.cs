@@ -1,8 +1,8 @@
-﻿#:package Aspire.Hosting.Azure.EventHubs@13.1.0
-#:package Aspire.Hosting.Azure.Kusto@13.1.0-preview.1.25616.3
-#:package Aspire.Hosting.Azure.Storage@13.1.0
-#:package Aspire.Hosting.Redis@13.1.0
-#:sdk Aspire.AppHost.Sdk@13.1.0
+﻿#:package Aspire.Hosting.Azure.EventHubs@13.1.1
+#:package Aspire.Hosting.Azure.Kusto@13.1.1-preview.1.26105.8
+#:package Aspire.Hosting.Azure.Storage@13.1.1
+#:package Aspire.Hosting.Redis@13.1.1
+#:sdk Aspire.AppHost.Sdk@13.1.1
 #:package CommunityToolkit.Aspire.Hosting.Golang@13.0.0
 #:package LupusBytes.Aspire.Hosting.Azure.EventHubs.LiveExplorer@2.0.0
 
@@ -11,14 +11,24 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Add Azure services
 var cluster = builder
     .AddAzureKustoCluster("tispocadx001")
-    .RunAsEmulator(e => e.WithLifetime(ContainerLifetime.Persistent));
+    .RunAsEmulator(e => e.WithLifetime(ContainerLifetime.Persistent))
+    .WithEndpoint("http", e => e.Port = 56700);
 var metricsDb = cluster
     .AddReadWriteDatabase("telemetries")
-/*
-    .WithCreationScript("""
-        .alter table metrics policy streamingingestion enable;
-    """)
-*/
+//     .WithCreationScript(
+// """
+// .execute database script <|
+//     .create-merge table metrics (
+//         timestamp: datetime, 
+//         device_id: string,
+//         sensor: string, 
+//         metric: string,
+//         value: dynamic,
+//         unit: string
+//         );
+//     .alter table metrics policy streamingingestion enable;
+// """
+//     )
     ;
 
 var eventHub = builder
@@ -48,7 +58,7 @@ var cache = builder
 
 // Add Golang workers
 var bronze = builder
-    .AddGolangApp("bronze", "../service.ingestion/src/cmd/bronze-worker")
+    .AddGolangApp("bronze", "../src/service.ingestion/cmd/bronze-worker")
     .WaitFor(eventHub)
     .WaitFor(blob)
     .WithReference(eventHub)
@@ -61,7 +71,7 @@ var bronze = builder
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 var silver = builder
-    .AddGolangApp("silver", "../service.ingestion/src/cmd/silver-worker")
+    .AddGolangApp("silver", "../src/service.ingestion/cmd/silver-worker")
     .WaitFor(eventHub)
     .WaitFor(blob)
     .WaitFor(cache)
@@ -76,7 +86,7 @@ var silver = builder
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
 var gold = builder
-    .AddGolangApp("gold", "../service.ingestion/src/cmd/gold-worker")
+    .AddGolangApp("gold", "../src/service.ingestion/cmd/gold-worker")
     .WaitFor(metricsDb)
     .WaitFor(eventHub)
     .WaitFor(blob)
@@ -89,24 +99,36 @@ var gold = builder
     .WithEnvironment("TELEMETRY_DATA_BATCHSIZE", "400")
     .WithOtlpExporter(OtlpProtocol.Grpc);
 
+// Add web server
+_ = builder
+    .AddGolangApp("web-server", "../src/service.data/cmd/server")
+    .WaitFor(metricsDb)
+    .WithReference(metricsDb)
+    .WithEnvironment("deployment-environment", "Aspire")
+    .WithHttpEndpoint(name: "localhost", port: 8080, isProxied: false)
+    .WithOtlpExporter(OtlpProtocol.Grpc);
+
 // Add test sender
 _ = builder
-    .AddGolangApp("v2-sender", "../service.ingestion/src/cmd/telemetry-senders/v2-sender")
+    .AddGolangApp("v2-sender", "../src/service.ingestion/cmd/telemetry-senders/v2-sender")
     .WithReference(eventHub)
     .WithReference(raw)
-    .WithOtlpExporter(OtlpProtocol.Grpc);
+    .WithOtlpExporter(OtlpProtocol.Grpc)
+    .WithExplicitStart();
 
 _ = builder
-    .AddGolangApp("v1-sender", "../service.ingestion/src/cmd/telemetry-senders/v1-sender")
+    .AddGolangApp("v1-sender", "../src/service.ingestion/cmd/telemetry-senders/v1-sender")
     .WithReference(eventHub)
     .WithReference(raw)
-    .WithOtlpExporter(OtlpProtocol.Grpc);
+    .WithOtlpExporter(OtlpProtocol.Grpc)
+    .WithExplicitStart();
 
 _ = builder
-    .AddGolangApp("legacy-sender", "../service.ingestion/src/cmd/telemetry-senders/legacy-sender")
+    .AddGolangApp("legacy-sender", "../src/service.ingestion/cmd/telemetry-senders/legacy-sender")
     .WithReference(eventHub)
     .WithReference(raw)
-    .WithOtlpExporter(OtlpProtocol.Grpc);
+    .WithOtlpExporter(OtlpProtocol.Grpc)
+    .WithExplicitStart();
 
 await builder
     .Build()
