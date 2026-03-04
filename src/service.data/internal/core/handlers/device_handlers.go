@@ -1,27 +1,48 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
+	"service.data/internal/components"
 	"service.data/internal/core/dtos"
 	"service.data/internal/views"
 )
 
+const (
+	devicesPageSize = 20
+)
+
 func (h *Handler) DevicesPageHandler(w http.ResponseWriter, r *http.Request) {
-	d, err := h.adx.ListDevices(r.Context(), 20, "")
-	if err != nil {
-		h.logger.Error(err, "Error fetching devices from ADX: %v", err)
+	var (
+		stats   []dtos.TileDto
+		devices []dtos.DeviceStateDto
+	)
+
+	g, ctx := errgroup.WithContext(r.Context())
+
+	g.Go(func() error {
+		var err error
+		stats, err = h.getDevicesStats(ctx)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		devices, err = h.listDevices(ctx, devicesPageSize, "")
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		h.logger.Error(err, "Error fetching data from ADX: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	devices := make([]dtos.DeviceStateDto, len(d))
-	for i, adxDevice := range d {
-		devices[i] = dtos.NewFromAdxDevice(adxDevice)
-	}
-
-	if err = views.DevicesView(devices).Render(r.Context(), w); err != nil {
+	if err := views.DevicesView(stats, devices).Render(r.Context(), w); err != nil {
 		h.logger.Error(err, "Error rendering devices page: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
@@ -34,20 +55,42 @@ func (h *Handler) SearchDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-	d, err := h.adx.ListDevices(r.Context(), 10, match)
+	devices, err := h.listDevices(r.Context(), devicesPageSize, match)
 	if err != nil {
 		h.logger.Error(err, "Error fetching devices from ADX: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	devices := make([]dtos.DeviceStateDto, len(d))
-	for i, adxDevice := range d {
-		devices[i] = dtos.NewFromAdxDevice(adxDevice)
-	}
-
-	if err = views.DeviceList(devices).Render(r.Context(), w); err != nil {
+	if err = components.DeviceList(devices).Render(r.Context(), w); err != nil {
 		h.logger.Error(err, "Error rendering device list: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+// getDevicesStats retrieves device statistics from ADX.
+func (h *Handler) getDevicesStats(ctx context.Context) ([]dtos.TileDto, error) {
+	s, err := h.adx.GetDevicesStats(ctx)
+	if err != nil {
+		h.logger.Error(err, "Error fetching devices stats: %v", err)
+		return []dtos.TileDto{}, err
+	}
+
+	return dtos.NewTilesFromAdxDevicesStats(s), nil
+}
+
+// listDevices retrieves a list of devices from ADX based on the provided page size and match string.
+func (h *Handler) listDevices(ctx context.Context, pageSize int64, match string) ([]dtos.DeviceStateDto, error) {
+	d, err := h.adx.ListDevices(ctx, pageSize, match)
+	if err != nil {
+		h.logger.Error(err, "Error fetching devices from ADX: %v", err)
+		return nil, err
+	}
+
+	devices := make([]dtos.DeviceStateDto, len(d))
+	for i, adxDevice := range d {
+		devices[i] = dtos.NewDeviceStateFromAdxDeviceState(adxDevice)
+	}
+
+	return devices, nil
 }

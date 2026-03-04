@@ -9,11 +9,11 @@
     | join kind=inner (
          devices_sensors_monitor() 
         | where device_id == device_id
-        | project device_id, sensors
+        | project device_id, sensors, sensors_count = array_length(sensors)
         )
         on device_id
     | summarize
-        arg_max(last_update, status, sensors)
+        arg_max(last_update, status, sensors, sensors_count)
         by device_id
     }
 

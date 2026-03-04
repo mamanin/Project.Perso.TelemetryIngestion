@@ -105,7 +105,7 @@ func (p *Probe) setStatus(s ProbeStatus) {
 // Start begins listening on the probe's TCP port and handles incoming connections.
 func (p *Probe) Start(ctx context.Context) error {
 	addr := fmt.Sprintf(":%d", p.port)
-	listener, err := net.Listen("tcp", addr)
+	listener, err := net.Listen("tcp", addr) // For development : ":0"
 	if err != nil {
 		return fmt.Errorf("failed to start %s probe on port %d: %w", p.name, p.port, err)
 	}

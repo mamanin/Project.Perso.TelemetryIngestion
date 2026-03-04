@@ -14,8 +14,8 @@ type DeviceStateDto struct {
 	Heartbeat string
 }
 
-// NewFromAdxDevice creates a new DeviceStateDto instance from an adx.DeviceState.
-func NewFromAdxDevice(d adx.DeviceState) DeviceStateDto {
+// NewDeviceStateFromAdxDeviceState creates a new DeviceStateDto instance from an adx.DeviceState.
+func NewDeviceStateFromAdxDeviceState(d adx.DeviceState) DeviceStateDto {
 	return DeviceStateDto{
 		Id:        d.DeviceId,
 		Status:    d.Status,

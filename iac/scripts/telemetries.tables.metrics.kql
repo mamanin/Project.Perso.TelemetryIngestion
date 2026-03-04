@@ -4,9 +4,9 @@
 //  - Retention set to 3 days
 //  - Hot caching for 1 day
 .create-merge table metrics (
-    timestamp: datetime, 
+    timestamp: datetime,
     device_id: string,
-    sensor: string, 
+    sensor: string,
     metric: string,
     value: dynamic,
     unit: string

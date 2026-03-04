@@ -17,15 +17,6 @@ var metricsDb = cluster
     .AddReadWriteDatabase("telemetries")
 //     .WithCreationScript(
 // """
-// .execute database script <|
-//     .create-merge table metrics (
-//         timestamp: datetime, 
-//         device_id: string,
-//         sensor: string, 
-//         metric: string,
-//         value: dynamic,
-//         unit: string
-//         );
 //     .alter table metrics policy streamingingestion enable;
 // """
 //     )

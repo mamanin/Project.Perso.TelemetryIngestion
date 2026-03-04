@@ -1,14 +1,17 @@
 package views
 
-import "service.data/internal/core/dtos"
+import (
+	"service.data/internal/components"
+	"service.data/internal/core/dtos"
+)
 
-templ DevicesView(devices []dtos.DeviceStateDto) {
+templ DevicesView(stats []dtos.TileDto, devices []dtos.DeviceStateDto) {
 	@mainLayout("TIS - Devices") {
 		<article class="devices-view">
-			<h1 class="text-h1">Devices</h1>
+			@components.DeviceTiles(stats)
 			<label>
 				<input
-					class="search-input text-body font-semibold"
+					class="search-input font-semibold"
 					type="search"
 					name="q"
 					placeholder="Search devices..."
@@ -18,31 +21,7 @@ templ DevicesView(devices []dtos.DeviceStateDto) {
 					hx-sync="this:replace"
 				/>
 			</label>
-			@DeviceList(devices)
+			@components.DeviceList(devices)
 		</article>
 	}
-}
-
-templ DeviceList(devices []dtos.DeviceStateDto) {
-	<div id="device-list">
-		if len(devices) == 0 {
-			<p class="no-results text-body-lg">No devices found.</p>
-		} else {
-			<ul class="device-list">
-				for _, device := range devices {
-					@DeviceItem(device)
-				}
-			</ul>
-		}
-	</div>
-}
-
-templ DeviceItem(device dtos.DeviceStateDto) {
-	<li class="device-item">
-		<span class="device-name text-body font-semibold">{ device.Id }</span>
-		for _, s := range device.Sensors {
-			<span class="device-type text-caption size-sm">{ s }</span>
-		}
-		<time class="device-id text-code" datetime={ device.Heartbeat } data-format="HH:mm">00:00</time>
-	</li>
 }

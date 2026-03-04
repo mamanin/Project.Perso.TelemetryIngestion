@@ -44,7 +44,7 @@ func FormatSensorPath(deviceID, sensor string) string {
 var (
 	// Device variable
 
-	DeviceStatus = []string{"on", "booting", "warning", "error"}
+	DeviceStatus = []string{"on", "warning", "error"}
 )
 
 // DeviceRules defines the metric rules for device sensors.

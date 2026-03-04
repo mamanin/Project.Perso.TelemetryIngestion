@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/Azure/azure-kusto-go/kusto"
 	"github.com/Azure/azure-kusto-go/kusto/data/errors"
@@ -14,6 +13,16 @@ import (
 )
 
 const (
+	devicesStatsQuery = `
+		devices_state
+		| extend is_off = last_update < ago(1h)
+		| summarize
+				total_device = dcount(device_id),
+				on_device = dcountif(device_id, not(is_off) and status == "on"),
+				off_device = dcountif(device_id, is_off),
+				issue_device = dcountif(device_id, not(is_off) and (status == "warning" or status == "error")),
+				total_sensors = sum(sensors_count)
+	`
 	listDevicesStateQuery = `
 		devices_state
 		| where device_id contains match
@@ -61,16 +70,28 @@ func NewClientForAspire(cfg AspireConfig, logger logger.Logger) (*Client, error)
 	}, nil
 }
 
-// DeviceState represents the state of a device.
-type DeviceState struct {
-	// DeviceId is the unique identifier for the device.
-	DeviceId string `kusto:"device_id"`
-	// Status is the current status of the device.
-	Status string `kusto:"status"`
-	// Sensors is a set of unique sensor names associated with the device.
-	Sensors []string `kusto:"sensors"`
-	// Heartbeat is the most recent timestamp of data received for the device.
-	Heartbeat time.Time `kusto:"last_update"`
+// GetDevicesStats retrieves statistics about devices.
+func (c *Client) GetDevicesStats(ctx context.Context) (DevicesStats, error) {
+	var stats DevicesStats
+
+	iter, err := c.client.Query(ctx, c.database,
+		kql.New(devicesStatsQuery),
+	)
+	if err != nil {
+		return stats, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer iter.Stop()
+
+	row, iErr, err := iter.NextRowOrError()
+	if iErr != nil || err != nil {
+		return stats, fmt.Errorf("query returned an error for a specific row: %w", iErr)
+	}
+
+	if err = row.ToStruct(&stats); err != nil {
+		return stats, fmt.Errorf("failed to map query result to struct: %w", err)
+	}
+
+	return stats, nil
 }
 
 // ListDevices retrieves a list of Device, limited by the specified number of records to take.
@@ -94,7 +115,6 @@ func (c *Client) ListDevices(ctx context.Context, take int64, match string) ([]D
 	for {
 		row, iErr, err = iter.NextRowOrError()
 		if iErr != nil {
-			c.logger.Error(iErr, "Query returned an error for a specific row: %v", iErr)
 			continue
 		}
 		if err != nil {

@@ -41,7 +41,7 @@
     letter-spacing: var(--tracking-tight);
   }
 
-  .text-h1 {
+  h1 {
     font-family: var(--font-sans), sans-serif;
     font-size: var(--text-3xl);
     font-weight: var(--weight-bold);
@@ -49,7 +49,7 @@
     letter-spacing: var(--tracking-tight);
   }
 
-  .text-h2 {
+  h2 {
     font-family: var(--font-sans), sans-serif;
     font-size: var(--text-2xl);
     font-weight: var(--weight-semibold);
@@ -57,7 +57,7 @@
     letter-spacing: var(--tracking-normal);
   }
 
-  .text-h3 {
+  h3 {
     font-family: var(--font-sans), sans-serif;
     font-size: var(--text-xl);
     font-weight: var(--weight-semibold);
@@ -65,25 +65,9 @@
     letter-spacing: var(--tracking-normal);
   }
 
-  .text-body {
+  p, input, span {
     font-family: var(--font-sans), sans-serif;
     font-size: var(--text-base);
-    font-weight: var(--weight-regular);
-    line-height: var(--leading-normal);
-    letter-spacing: var(--tracking-normal);
-  }
-
-  .text-body-lg {
-    font-family: var(--font-sans), sans-serif;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-regular);
-    line-height: var(--leading-normal);
-    letter-spacing: var(--tracking-normal);
-  }
-
-  .text-body-sm {
-    font-family: var(--font-sans), sans-serif;
-    font-size: var(--text-sm);
     font-weight: var(--weight-regular);
     line-height: var(--leading-normal);
     letter-spacing: var(--tracking-normal);
@@ -166,7 +150,7 @@
 
   .truncate {
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }

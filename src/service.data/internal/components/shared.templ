@@ -1,0 +1,30 @@
+package components
+
+import (
+  "service.data/internal/core/dtos"
+)
+
+templ Tile(tile dtos.TileDto) {
+	<div>
+		<p>{ tile.Title }</p>
+		<p>{ tile.Value }</p>
+		<p>{ tile.Desc }</p>
+		<p>{ tile.Icon }</p>
+		<p>{ tile.Type }</p>
+	</div>
+}
+
+css infoTileStyle() {
+}
+
+css successTileStyle() {
+}
+
+css errorTileStyle() {
+}
+
+css warningTileStyle() {
+}
+
+css defaultTileStyle() {
+}

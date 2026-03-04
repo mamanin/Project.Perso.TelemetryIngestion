@@ -1,11 +1,11 @@
 ﻿:root {
-  --primary-bg-color: #0f0f0f;
-  --primary-border-color: #333;
-  --primary-text-color: white;
+  --color-primary-bg: #0f0f0f;
+  --color-primary-border: #333333;
+  --color-primary-text: white;
 
-  --secondary-bg-color: #1a1a1a;
-  --secondary-text-color: #aaa;
+  --color-secondary-bg: #1a1a1a;
+  --color-secondary-text: #aaaaaa;
 
-  --tertiary-bg-color: #262626;
-  --tertiary-text-color: #666;
+  --color-tertiary-bg: #262626;
+  --color-tertiary-text: #666666;
 }
