@@ -1,6 +1,11 @@
 @description('Constants for ingestion service')
 @export()
 var ingestionConstants = {
+  eventhub: {
+    rawName: 'telemetry-raw'
+    metricsName: 'telemetry-metrics'
+    dataName: 'telemetry-data'
+  }
   bronze: {
     partitionCount: 4
     processingBatchSize: 100

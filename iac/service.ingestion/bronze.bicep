@@ -65,8 +65,60 @@ module identity '../common/modules/identity.userassigned.module.bicep' = {
   }
 }
 
+module containerRegistryRoleAssignment '../common/modules/rbac/rbac.containerregistry.module.bicep' = {
+  name: 'containerRegistryRoleAssignmentDeploy'
+  params: {
+    name: containerRegistry.name
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.containerregistry['Acr Pull']
+    ]
+  }
+}
+
+module storageAccountRoleAssignment '../common/modules/rbac/rbac.storageaccount.module.bicep' = {
+  name: 'storageAccountRoleAssignmentDeploy'
+  params: {
+    name: storageAccount.name
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.storageaccount['Storage Blob Data Contributor']
+    ]
+  }
+}
+
+module rawEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.bicep' = {
+  name: 'rawEventHubRoleAssignmentDeploy'
+  params: {
+    namespaceName: namespace.name
+    name: ingestionConstants.eventhub.rawName
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.eventhub['Azure Event Hubs Data Receiver']
+    ]
+  }
+}
+
+module metricsEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.bicep' = {
+  name: 'metricsEventHubRoleAssignmentDeploy'
+  params: {
+    namespaceName: namespace.name
+    name: ingestionConstants.eventhub.metricsName
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.eventhub['Azure Event Hubs Data Sender']
+    ]
+  }
+}
+
 module containerApp '../common/modules/containerapp.module.bicep' = {
   name: 'containerAppDeploy'
+  dependsOn: [
+    containerRegistryRoleAssignment
+    storageAccountRoleAssignment
+    rawEventHubRoleAssignment
+    metricsEventHubRoleAssignment
+  ]
   params: {
     prefix: prefix
     number: '001'
@@ -87,7 +139,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
         identity: identity.outputs.id
         metadata: {
             eventHubNamespace: namespace.name
-            eventHubName: 'telemetry-raw'
+            eventHubName: ingestionConstants.eventhub.rawName
             storageAccountName: storageAccount.name
             blobContainer: 'partition-checkpoints'
             checkpointStrategy: 'blobMetadata'
@@ -121,7 +173,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       }
       {
         name: 'EventHub__Subscriber__Name'
-        value: 'telemetry-raw'
+        value: ingestionConstants.eventhub.rawName
       }
       {
         name: 'EventHub__Subscriber__BatchSize'
@@ -133,7 +185,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       }
       {
         name: 'EventHub__Publisher__Name'
-        value: 'telemetry-metrics'
+        value: ingestionConstants.eventhub.metricsName
       }
 
       // OpenTelemetry settings
@@ -151,6 +203,10 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       {
         name: 'OTEL_SERVICE_NAME'
         value: 'service.ingestion'
+      }
+      {
+        name: 'OTEL_SERVICE_LAYER'
+        value: 'layer.bronze'
       }
       {
         name: 'OTEL_SERVICE_VERSION'
@@ -181,52 +237,6 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
         periodSeconds: 3
         initialDelaySeconds: 5
       }
-    ]
-  }
-}
-
-module containerRegistryRoleAssignment '../common/modules/rbac/rbac.containerregistry.module.bicep' = {
-  name: 'containerRegistryRoleAssignmentDeploy'
-  params: {
-    name: containerRegistry.name
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.containerregistry['Acr Pull']
-    ]
-  }
-}
-
-module storageAccountRoleAssignment '../common/modules/rbac/rbac.storageaccount.module.bicep' = {
-  name: 'storageAccountRoleAssignmentDeploy'
-  params: {
-    name: storageAccount.name
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.storageaccount['Storage Blob Data Contributor']
-    ]
-  }
-}
-
-module rawEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.bicep' = {
-  name: 'rawEventHubRoleAssignmentDeploy'
-  params: {
-    namespaceName: namespace.name
-    name: 'telemetry-raw'
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.eventhub['Azure Event Hubs Data Receiver']
-    ]
-  }
-}
-
-module metricsEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.bicep' = {
-  name: 'metricsEventHubRoleAssignmentDeploy'
-  params: {
-    namespaceName: namespace.name
-    name: 'telemetry-metrics'
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.eventhub['Azure Event Hubs Data Sender']
     ]
   }
 }

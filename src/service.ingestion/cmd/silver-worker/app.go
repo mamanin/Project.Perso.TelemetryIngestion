@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
 	"service.ingestion/external/cache/redis"
 	"service.ingestion/external/credential"
 	"service.ingestion/external/messaging/eventhub"
@@ -39,10 +38,7 @@ func NewApp(ctx context.Context) (AppManager, error) {
 	tCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	log, err := logger.NewOtelLogger(
-		tCtx,
-		attribute.String("service.layer", "silver"),
-	)
+	log, err := logger.NewOtelLogger(tCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize open telemetry logger: %w", err)
 	}
@@ -129,7 +125,7 @@ func (a *App) initializeCredentials() error {
 
 // initializeRedis sets up the redis cache.
 func (a *App) initializeRedis() error {
-	r, err := redis.NewRedis(redis.Config{})
+	r, err := redis.NewRedis(a.cfg.Redis)
 
 	if err != nil {
 		return fmt.Errorf("failed to initialize redis client: %w", err)
@@ -148,16 +144,9 @@ func (a *App) initializeOrchestrator() error {
 
 	h := silver.NewHandler(a.logger, a.redis, p)
 
-	o := processor.NewProcessor(
-		processor.Config{
-			Workers: 0,
-		},
-		a.logger,
-		s,
-		func(i int) processor.Worker {
-			return silver.NewWorker(i, 0, a.logger, h)
-		},
-	)
+	o := processor.NewProcessor(a.cfg.Processor, a.logger, s, func(i int) processor.Worker {
+		return silver.NewWorker(i, a.cfg.EventHub.Subscriber.BatchSize, a.logger, h)
+	})
 
 	a.orchestrator = o
 	return nil
@@ -165,17 +154,17 @@ func (a *App) initializeOrchestrator() error {
 
 // initializeMessaging sets up the messaging services.
 func (a *App) initializeMessaging() (*eventhub.Publisher, *eventhub.Subscriber, error) {
-	cp, err := container.NewCheckpoint(container.Config{}, a.cred)
+	cp, err := container.NewCheckpoint(a.cfg.Container, a.cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create checkpoint store: %w", err)
 	}
 
-	p, err := eventhub.NewPublisher(eventhub.Config{}, a.cred)
+	p, err := eventhub.NewPublisher(a.cfg.EventHub, a.cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create event hub publisher: %w", err)
 	}
 
-	s, err := eventhub.NewSubscriber(a.logger, eventhub.Config{}, a.cred, cp)
+	s, err := eventhub.NewSubscriber(a.logger, a.cfg.EventHub, a.cred, cp)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}

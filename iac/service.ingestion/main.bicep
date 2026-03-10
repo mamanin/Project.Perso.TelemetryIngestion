@@ -125,12 +125,16 @@ module redisCache '../common/modules/redis.module.bicep' = if (layerDeployment.s
     prefix: prefix
     location: location
     tags: tags
-    sku: {
-      name: 'Basic'
-      capacity: 0
-    }
-    disableAccessKeyAuth: true
-    enableAadAuth: true
+    sku: 'Balanced_B1'
+    highAvailability: false
+  }
+}
+
+module redisDatabase '../common/modules/redis.database.module.bicep' = if (layerDeployment.silver) {
+  name: 'redisDatabaseDeploy'
+  params: {
+    redisName: redisCache!.outputs.name
+    enableAccessKeyAuth: false
   }
 }
 
@@ -197,14 +201,14 @@ module eventHubNamespace '../common/modules/eventhub.namespace.module.bicep' = {
     sku: 'Standard'
     capacity: 1
     isAutoInflateEnabled: true
-    maximumThroughputUnits: 4
+    maximumThroughputUnits: 10
   }
 }
 
 module rawEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.bronze) {
   name: 'rawEventHubDeploy'
   params: {
-    name: 'telemetry-raw'
+    name: ingestionConstants.eventhub.rawName
     namespaceName: eventHubNamespace.outputs.name
     partitionCount: ingestionConstants.bronze.partitionCount
   }
@@ -213,7 +217,7 @@ module rawEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployme
 module metricsEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.bronze) {
   name: 'metricsEventHubDeploy'
   params: {
-    name: 'telemetry-metrics'
+    name: ingestionConstants.eventhub.metricsName
     namespaceName: eventHubNamespace.outputs.name
     partitionCount: ingestionConstants.silver.partitionCount
   }
@@ -222,21 +226,8 @@ module metricsEventHub '../common/modules/eventhub.module.bicep' = if (layerDepl
 module dataEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.silver) {
   name: 'dataEventHubDeploy'
   params: {
-    name: 'telemetry-data'
+    name: ingestionConstants.eventhub.dataName
     namespaceName: eventHubNamespace.outputs.name
     partitionCount: ingestionConstants.gold.partitionCount
-  }
-}
-
-// -----------------------------------------------------------------------
-// Access Management
-// -----------------------------------------------------------------------
-
-module redisAccessPolicy '../common/modules/redis.accesspolicy.module.bicep' = if (layerDeployment.silver) {
-  name: 'redisAccessPolicyDeploy'
-  params: {
-    redisName: redisCache!.outputs.name
-    name: 'telemetry-ingestion-silver-layer-policy'
-    permissions: ' +@read +@write ~service.ingestion:silver:*'
   }
 }

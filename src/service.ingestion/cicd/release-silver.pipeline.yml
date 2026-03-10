@@ -1,0 +1,83 @@
+trigger: none
+
+parameters:
+    - name: VersionIncrement
+      displayName: 'Version increment'
+      type: string
+      default: patch
+      values:
+          - major
+          - minor
+          - patch
+    - name: EnableVersionSuffix
+      displayName: 'Enable version suffix'
+      type: boolean
+      default: false
+    - name: Suffix
+      displayName: 'Suffix'
+      type: string
+      default: "alpha"
+
+pool:
+    vmImage: "ubuntu-22.04"
+
+variables:
+    - group: tispoc
+    - name: location
+      value: "France Central"
+    - name: bicepFilePath
+      value: "iac/service.ingestion/silver.bicep"
+    - name: deploymentName
+      value: "release-ingestion-silver-$(Build.BuildId)"
+    - name: versionKey
+      value: "service-ingestion-silver-version"
+
+stages:
+    - stage: SemVerIncrement
+      displayName: "Increment semantic version"
+      jobs:
+          - template: ../../../cicd/jobs/semver-incr.job.yml
+            parameters:
+                organizationUrl: $(System.TeamFoundationCollectionUri)
+                projectName: $(System.TeamProject)
+                versionGroupName: tispoc
+                versionKey: $(versionKey)
+                versionIncrement: ${{ parameters.VersionIncrement }}
+                enableVersionSuffix: ${{ parameters.EnableVersionSuffix }}
+                suffix: ${{ parameters.Suffix }}
+
+    - stage: DeployApp
+      displayName: "Deploy application"
+      dependsOn:
+          - SemVerIncrement
+      variables:
+          appVersion: $[ stageDependencies.SemVerIncrement.SemVerIncrement.outputs['SemVerIncrement.version'] ]
+      jobs:
+          - template: ../../../cicd/jobs/deploy-app.job.yml
+            parameters:
+                buildContext: "$(Build.SourcesDirectory)/src/service.ingestion"
+                dockerfilePath: "src/service.ingestion/Dockerfile.Silver"
+                repository: "service.ingestion/silver"
+                containerRegistryConnection: $(acrServiceConnectionName)
+                tags: |
+                    $(appVersion)
+                    latest
+
+    - stage: DeployInfra
+      displayName: "Deploy infrastructure"
+      dependsOn:
+          - SemVerIncrement
+          - DeployApp
+      variables:
+          appVersion: $[ stageDependencies.SemVerIncrement.SemVerIncrement.outputs['SemVerIncrement.version'] ]
+      jobs:
+          - template: ../../../cicd/jobs/deploy-infra.job.yml
+            parameters:
+                deploymentName: $(deploymentName)
+                subscriptionId: $(subscriptionId)
+                resourceGroupName: $(resourceGroupName)
+                location: $(location)
+                bicepFilePath: $(bicepFilePath)
+                azureSubscription: $(armServiceConnectionName)
+                overrideParameters: >-
+                    -version "$(appVersion)"

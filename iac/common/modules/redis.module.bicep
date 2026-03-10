@@ -3,11 +3,10 @@
 // -----------------------------------------------------------------------
 // Module: redis.module.bicep
 // Description: Deploys Azure Redis Cache
-// See: https://learn.microsoft.com/en-us/azure/templates/microsoft.cache/redis
+// See: https://learn.microsoft.com/en-us/azure/templates/microsoft.cache/redisenterprise
 // =======================================================================
 
 import { BuildResourceName } from '../functions/core.functions.bicep'
-import { RedisSkuDescription } from '../types/redis.sku.type.bicep'
 
 @description('The naming prefix for resource naming')
 @minLength(4)
@@ -24,31 +23,24 @@ param location string = resourceGroup().location
 param tags object = {}
 
 @description('The SKU of the Redis Cache')
-param sku RedisSkuDescription
+param sku 'Balanced_B0' | 'Balanced_B1' | 'Balanced_B2' | 'Balanced_B3' = 'Balanced_B0'
 
-@description('Disable access key authentication for the Redis Cache')
-param disableAccessKeyAuth bool = false
+@description('Enable high availability for the Redis Cache')
+param highAvailability bool = true
 
-@description('Enable Azure AD authentication for the Redis Cache')
-param enableAadAuth bool = true
-
-resource redis 'Microsoft.Cache/redis@2024-11-01' = {
+resource redis 'Microsoft.Cache/redisEnterprise@2025-08-01-preview' = {
   name: BuildResourceName(prefix, 'red', number)
   location: location
   identity: {
     type: 'SystemAssigned'
   }
   tags: tags
+  sku: {
+    name: sku
+  }
   properties: {
-    sku: {
-      name: sku.name
-      family: sku.name == 'Premium' ? 'P' : 'C'
-      capacity: sku.capacity
-    }
-    disableAccessKeyAuthentication: disableAccessKeyAuth
-    redisConfiguration: {
-        'aad-enabled' : enableAadAuth ? 'true' : 'false'
-    }
+    highAvailability: highAvailability ? 'Enabled' : 'Disabled'
+    publicNetworkAccess: 'Enabled'
     minimumTlsVersion: '1.2'
   }
 }
@@ -61,6 +53,3 @@ output name string = redis.name
 
 @description('The Redis Cache host name')
 output hostName string = redis.properties.hostName
-
-@description('The Redis Cache port')
-output port int = redis.properties.port

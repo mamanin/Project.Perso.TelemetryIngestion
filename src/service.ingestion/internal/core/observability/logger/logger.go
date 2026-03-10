@@ -18,6 +18,7 @@ import (
 const (
 	OtelExporterOtelEndpointKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
 	OtelServiceNameKey          = "OTEL_SERVICE_NAME"
+	OtelServiceLayerKey         = "OTEL_SERVICE_LAYER"
 	OtelServiceVersionKey       = "OTEL_SERVICE_VERSION"
 	OtelEnabled                 = "OTEL_ENABLED"
 )
@@ -43,6 +44,7 @@ type logConfig struct {
 	otelEnabled    bool // otelEnabled indicates whether OpenTelemetry logging is enabled (used for local testing).
 	endpoint       string
 	serviceName    string
+	serviceLayer   string
 	serviceVersion string
 	minLevel       log.Severity
 }
@@ -58,6 +60,7 @@ func NewOtelLogger(ctx context.Context, args ...attribute.KeyValue) (Logger, err
 		resource.WithAttributes(
 			append(args,
 				attribute.String("service.name", cfg.serviceName),
+				attribute.String("service.layer", cfg.serviceLayer),
 				attribute.String("service.version", cfg.serviceVersion),
 			)...,
 		),
@@ -93,6 +96,7 @@ func NewOtelLogger(ctx context.Context, args ...attribute.KeyValue) (Logger, err
 func loadConfig() (logConfig, error) {
 	endpoint := strings.TrimSpace(os.Getenv(OtelExporterOtelEndpointKey))
 	serviceName := strings.TrimSpace(os.Getenv(OtelServiceNameKey))
+	serviceLayer := strings.TrimSpace(os.Getenv(OtelServiceLayerKey))
 	serviceVersion := strings.TrimSpace(os.Getenv(OtelServiceVersionKey))
 	otelEnabled := strings.TrimSpace(os.Getenv(OtelEnabled))
 
@@ -107,6 +111,7 @@ func loadConfig() (logConfig, error) {
 	return logConfig{
 		endpoint:       endpoint,
 		serviceName:    serviceName,
+		serviceLayer:   serviceLayer,
 		serviceVersion: serviceVersion,
 		otelEnabled:    otelEnabled == "true",
 	}, nil

@@ -3,27 +3,32 @@
 // -----------------------------------------------------------------------
 // Module: redis.accesspolicy.module.bicep
 // Description: Deploys Azure Redis Cache Access Policies
-// See: https://learn.microsoft.com/en-us/azure/templates/microsoft.cache/redis/accesspolicies
+// See: https://learn.microsoft.com/en-us/azure/templates/microsoft.cache/redisenterprise/databases/accesspolicyassignments
 // =======================================================================
 
 @description('The name of the redis cache resource')
 param redisName string
 
-@description('The name of the access policy')
-@minLength(4)
-param name string
+@description('The principal ID to assign the role to')
+param principalId string
 
-@description('The permissions assigned to the access policy')
-param permissions string
-
-resource redis 'Microsoft.Cache/redis@2024-11-01' existing = {
+resource redis 'Microsoft.Cache/redisEnterprise@2025-08-01-preview' existing = {
   name: redisName
 }
 
-resource redisAccessPolicy 'Microsoft.Cache/redis/accessPolicies@2024-11-01' = {
+resource database 'Microsoft.Cache/redisEnterprise/databases@2025-08-01-preview' existing = {
   parent: redis
-  name: name
+  name: 'default'
+}
+
+resource roleAssignment 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2025-08-01-preview' = {
+  parent: database
+  name: guid(database.id, principalId, 'default')
   properties: {
-    permissions: permissions
+    accessPolicyName: 'default' // Currently the only supported access policy is 'default' allowing all permissions.
+    user: {
+      objectId: principalId
+    }
   }
 }
+

@@ -48,7 +48,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' existing 
 }
 
 resource namespace 'Microsoft.EventHub/namespaces@2025-05-01-preview' existing = {
-  name: BuildResourceName(prefix, 'evh', '001')
+  name: BuildResourceName(prefix, 'ehn', '001')
 }
 
 resource kustoCluster 'Microsoft.Kusto/clusters@2024-04-13' existing = {
@@ -69,8 +69,60 @@ module identity '../common/modules/identity.userassigned.module.bicep' = {
   }
 }
 
+module containerRegistryRoleAssignment '../common/modules/rbac/rbac.containerregistry.module.bicep' = {
+  name: 'containerRegistryRoleAssignmentDeploy'
+  params: {
+    name: containerRegistry.name
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.containerregistry['Acr Pull']
+    ]
+  }
+}
+
+module storageAccountRoleAssignment '../common/modules/rbac/rbac.storageaccount.module.bicep' = {
+  name: 'storageAccountRoleAssignmentDeploy'
+  params: {
+    name: storageAccount.name
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.storageaccount['Storage Blob Data Contributor']
+    ]
+  }
+}
+
+module dataEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.bicep' = {
+  name: 'dataEventHubRoleAssignmentDeploy'
+  params: {
+    namespaceName: namespace.name
+    name: ingestionConstants.eventhub.dataName
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.eventhub['Azure Event Hubs Data Receiver']
+    ]
+  }
+}
+
+module kustoClusterDatabaseRoleAssignment '../common/modules/rbac/rbac.kusto.database.module.bicep' = {
+  name: 'kustoClusterDatabaseRoleAssignmentDeploy'
+  params: {
+    kustoClusterName: kustoCluster.name
+    databaseName: 'telemetries'
+    principalId: identity.outputs.principalId
+    roles: [
+      'Ingestor'
+    ]
+  }
+}
+
 module containerApp '../common/modules/containerapp.module.bicep' = {
   name: 'containerAppDeploy'
+  dependsOn: [
+    containerRegistryRoleAssignment
+    storageAccountRoleAssignment
+    dataEventHubRoleAssignment
+    kustoClusterDatabaseRoleAssignment
+  ]
   params: {
     prefix: prefix
     number: '003'
@@ -90,7 +142,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
         identity: identity.outputs.id
         metadata: {
             eventHubNamespace: namespace.name
-            eventHubName: 'telemetry-data'
+            eventHubName: ingestionConstants.eventhub.dataName
             storageAccountName: storageAccount.name
             blobContainer: 'partition-checkpoints'
             checkpointStrategy: 'blobMetadata'
@@ -125,7 +177,11 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       }
       {
         name: 'OTEL_SERVICE_NAME'
-        value: 'gold-layer'
+        value: 'service.ingestion'
+      }
+      {
+        name: 'OTEL_SERVICE_LAYER'
+        value: 'layer.gold'
       }
       {
         name: 'OTEL_SERVICE_VERSION'
@@ -156,52 +212,6 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
         periodSeconds: 3
         initialDelaySeconds: 5
       }
-    ]
-  }
-}
-
-module containerRegistryRoleAssignment '../common/modules/rbac/rbac.containerregistry.module.bicep' = {
-  name: 'containerRegistryRoleAssignmentDeploy'
-  params: {
-    name: containerRegistry.name
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.containerregistry['Acr Pull']
-    ]
-  }
-}
-
-module storageAccountRoleAssignment '../common/modules/rbac/rbac.storageaccount.module.bicep' = {
-  name: 'storageAccountRoleAssignmentDeploy'
-  params: {
-    name: storageAccount.name
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.storageaccount['Storage Blob Data Contributor']
-    ]
-  }
-}
-
-module dataEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.bicep' = {
-  name: 'dataEventHubRoleAssignmentDeploy'
-  params: {
-    namespaceName: namespace.name
-    name: 'telemetry-data'
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.eventhub['Azure Event Hubs Data Receiver']
-    ]
-  }
-}
-
-module kustoClusterDatabaseRoleAssignment '../common/modules/rbac/rbac.kusto.database.module.bicep' = {
-  name: 'kustoClusterDatabaseRoleAssignmentDeploy'
-  params: {
-    kustoClusterName: kustoCluster.name
-    databaseName: 'telemetries'
-    principalId: identity.outputs.principalId
-    roles: [
-      'Ingestor'
     ]
   }
 }

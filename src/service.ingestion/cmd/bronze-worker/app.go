@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
 	"service.ingestion/external/credential"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/storage/container"
@@ -38,7 +37,7 @@ func NewApp(ctx context.Context) (AppManager, error) {
 	tCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	log, err := logger.NewOtelLogger(tCtx, attribute.String("service.layer", "bronze-layer"))
+	log, err := logger.NewOtelLogger(tCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize open telemetry logger: %w", err)
 	}

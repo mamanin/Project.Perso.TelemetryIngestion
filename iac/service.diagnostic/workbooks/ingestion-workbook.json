@@ -53,7 +53,18 @@
             "typeSettings": {
               "additionalResourceOptions": []
             },
-            "jsonData": "[{\"value\":\"5m\",\"label\":\"5 min\"},{\"value\":\"10m\",\"label\":\"10 min\"},{\"value\":\"30m\",\"label\":\"30 min\"},{\"value\":\"1h\",\"label\":\"1 h\"},{\"value\":\"4h\",\"label\":\"4 h\"},{\"value\":\"12h\",\"label\":\"12 h\"}]",
+            "jsonData": "[{\"value\":\"1m\",\"label\":\"1 min\"},{\"value\":\"5m\",\"label\":\"5 min\"},{\"value\":\"10m\",\"label\":\"10 min\"},{\"value\":\"30m\",\"label\":\"30 min\"},{\"value\":\"1h\",\"label\":\"1 h\"},{\"value\":\"4h\",\"label\":\"4 h\"},{\"value\":\"12h\",\"label\":\"12 h\"}]",
+            "timeContext": {
+              "durationMs": 86400000
+            }
+          },
+          {
+            "id": "a1b2c3d4-0003-0000-0000-000000000003",
+            "version": "KqlParameterItem/1.0",
+            "name": "SelectedTab",
+            "type": 1,
+            "isHiddenWhenLocked": true,
+            "value": "bronze",
             "timeContext": {
               "durationMs": 86400000
             }
@@ -66,111 +77,38 @@
       "name": "parameters"
     },
     {
-      "type": 1,
+      "type": 11,
       "content": {
-        "json": "## 🥉 Ingestion bronze layer\n---"
-      },
-      "name": "title-bronze-layer"
-    },
-    {
-      "type": 12,
-      "content": {
-        "version": "NotebookGroup/1.0",
-        "groupType": "editable",
-        "items": [
+        "version": "LinkItem/1.0",
+        "style": "tabs",
+        "links": [
           {
-            "type": 10,
-            "content": {
-              "chartId": "workbook6f25bbb1-ddb5-41c8-a222-2822f35c014d",
-              "version": "MetricsItem/2.0",
-              "size": 1,
-              "chartType": 2,
-              "resourceType": "microsoft.eventhub/namespaces",
-              "metricScope": 0,
-              "resourceIds": [
-                "{{EVENT_HUB_INGESTION_TELEMETRY}}"
-              ],
-              "timeContextFromParameter": "TimeRange",
-              "timeContext": {
-                "durationMs": 1800000
-              },
-              "metrics": [
-                {
-                  "namespace": "microsoft.eventhub/namespaces",
-                  "metric": "microsoft.eventhub/namespaces--IncomingMessages",
-                  "aggregation": 1
-                },
-                {
-                  "namespace": "microsoft.eventhub/namespaces",
-                  "metric": "microsoft.eventhub/namespaces--OutgoingMessages",
-                  "aggregation": 1
-                }
-              ],
-              "title": "Event Hub - telemetry-raw : Incoming / Outgoing Messages",
-              "filters": [
-                {
-                  "key": "EntityName",
-                  "operator": "==",
-                  "values": [
-                    "telemetry-raw"
-                  ]
-                }
-              ],
-              "gridSettings": {
-                "rowLimit": 10000
-              }
-            },
-            "name": "group-eventhub-raw-messages"
+            "id": "tab-link-bronze",
+            "cellValue": "SelectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "🥉 Bronze layer",
+            "subTarget": "bronze",
+            "style": "link"
           },
           {
-            "type": 10,
-            "content": {
-              "chartId": "workbook7c8e4328-49e1-4592-a915-ec963436a6ef",
-              "version": "MetricsItem/2.0",
-              "size": 1,
-              "chartType": 2,
-              "resourceType": "microsoft.app/containerapps",
-              "metricScope": 0,
-              "resourceIds": [
-                "{{CONTAINER_APP_INGESTION_BRONZE}}"
-              ],
-              "timeContextFromParameter": "TimeRange",
-              "timeContext": {
-                "durationMs": 1800000
-              },
-              "metrics": [
-                {
-                  "namespace": "microsoft.app/containerapps",
-                  "metric": "microsoft.app/containerapps-Basic-CpuPercentage",
-                  "aggregation": 4
-                },
-                {
-                  "namespace": "microsoft.app/containerapps",
-                  "metric": "microsoft.app/containerapps-Basic-CpuPercentage",
-                  "aggregation": 3
-                },
-                {
-                  "namespace": "microsoft.app/containerapps",
-                  "metric": "microsoft.app/containerapps-Basic-MemoryPercentage",
-                  "aggregation": 4
-                },
-                {
-                  "namespace": "microsoft.app/containerapps",
-                  "metric": "microsoft.app/containerapps-Basic-MemoryPercentage",
-                  "aggregation": 3
-                }
-              ],
-              "title": "CPU / Memory - Usage (%)",
-              "gridSettings": {
-                "rowLimit": 10000
-              }
-            },
-            "name": "group-container-cpu-memory-percentage"
+            "id": "tab-link-silver",
+            "cellValue": "SelectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "🥈 Silver layer",
+            "subTarget": "silver",
+            "style": "link"
+          },
+          {
+            "id": "tab-link-gold",
+            "cellValue": "SelectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "🥇 Gold layer",
+            "subTarget": "gold",
+            "style": "link"
           }
         ]
       },
-      "customWidth": "50",
-      "name": "group-core-ressources"
+      "name": "tabs"
     },
     {
       "type": 12,
@@ -179,35 +117,104 @@
         "groupType": "editable",
         "items": [
           {
-            "type": 3,
+            "type": 12,
             "content": {
-              "version": "KqlItem/1.0",
-              "query": "let reader = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"bronze-layer\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize ReaderDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2) by bin(timestamp, {Granularity});\nlet workers = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"bronze-layer\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize WorkerDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2) by bin(timestamp, {Granularity});\nreader\n| join kind=fullouter workers on timestamp\n| project timestamp = coalesce(timestamp, timestamp1), ReaderDurationMs, WorkerDurationMs\n| sort by timestamp asc",
-              "size": 1,
-              "title": "Reader & Worker - Process Duration (ms)",
-              "timeContextFromParameter": "TimeRange",
-              "queryType": 0,
-              "resourceType": "microsoft.insights/components",
-              "crossComponentResources": [
-                "{{APP_INSIGHTS_INGESTION}}"
-              ],
-              "visualization": "timechart",
-              "chartSettings": {
-                "seriesLabelSettings": [
-                  {
-                    "seriesName": "ReaderDurationMs",
-                    "label": "Reader Duration (ms)",
-                    "color": "green"
+              "version": "NotebookGroup/1.0",
+              "groupType": "editable",
+              "items": [
+                {
+                  "type": 10,
+                  "content": {
+                    "chartId": "workbook6f25bbb1-ddb5-41c8-a222-2822f35c014d",
+                    "version": "MetricsItem/2.0",
+                    "size": 1,
+                    "chartType": 2,
+                    "resourceType": "microsoft.eventhub/namespaces",
+                    "metricScope": 0,
+                    "resourceIds": [
+                      "{{EVENT_HUB_INGESTION_TELEMETRY}}"
+                    ],
+                    "timeContextFromParameter": "TimeRange",
+                    "timeContext": {
+                      "durationMs": 1800000
+                    },
+                    "metrics": [
+                      {
+                        "namespace": "microsoft.eventhub/namespaces",
+                        "metric": "microsoft.eventhub/namespaces--IncomingMessages",
+                        "aggregation": 1
+                      },
+                      {
+                        "namespace": "microsoft.eventhub/namespaces",
+                        "metric": "microsoft.eventhub/namespaces--OutgoingMessages",
+                        "aggregation": 1
+                      }
+                    ],
+                    "title": "Event Hub - telemetry-raw : Incoming / Outgoing Messages",
+                    "filters": [
+                      {
+                        "key": "EntityName",
+                        "operator": "==",
+                        "values": [
+                          "telemetry-raw"
+                        ]
+                      }
+                    ],
+                    "gridSettings": {
+                      "rowLimit": 10000
+                    }
                   },
-                  {
-                    "seriesName": "WorkerDurationMs",
-                    "label": "Worker Duration (ms)",
-                    "color": "blue"
-                  }
-                ]
-              }
+                  "name": "group-eventhub-raw-messages"
+                },
+                {
+                  "type": 10,
+                  "content": {
+                    "chartId": "workbook7c8e4328-49e1-4592-a915-ec963436a6ef",
+                    "version": "MetricsItem/2.0",
+                    "size": 1,
+                    "chartType": 2,
+                    "resourceType": "microsoft.app/containerapps",
+                    "metricScope": 0,
+                    "resourceIds": [
+                      "{{CONTAINER_APP_INGESTION_BRONZE}}"
+                    ],
+                    "timeContextFromParameter": "TimeRange",
+                    "timeContext": {
+                      "durationMs": 1800000
+                    },
+                    "metrics": [
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-CpuPercentage",
+                        "aggregation": 4
+                      },
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-CpuPercentage",
+                        "aggregation": 3
+                      },
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-MemoryPercentage",
+                        "aggregation": 4
+                      },
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-MemoryPercentage",
+                        "aggregation": 3
+                      }
+                    ],
+                    "title": "CPU / Memory - Usage (%)",
+                    "gridSettings": {
+                      "rowLimit": 10000
+                    }
+                  },
+                  "name": "group-container-cpu-memory-percentage"
+                }
+              ]
             },
-            "name": "group-container-process-duration-graph"
+            "customWidth": "50",
+            "name": "group-core-ressources"
           },
           {
             "type": 12,
@@ -219,133 +226,483 @@
                   "type": 3,
                   "content": {
                     "version": "KqlItem/1.0",
-                    "query": "traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"bronze-layer\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize AvgDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2)",
-                    "size": 4,
-                    "title": "Reader - Avg Duration (ms)",
-                    "timeContextFromParameter": "TimeRange",
-                    "queryType": 0,
-                    "resourceType": "microsoft.insights/components",
-                    "crossComponentResources": [
-                      "{{APP_INSIGHTS_INGESTION}}"
-                    ],
-                    "visualization": "stat",
-                    "tileSettings": {
-                      "showBorder": true
-                    },
-                    "statSettings": {
-                      "valueTooltipSettings": {
-                        "tooltip": "Average reader process duration over the selected time range"
-                      },
-                      "tagText": "ms",
-                      "colorSettings": {
-                        "type": "static",
-                        "mode": "background",
-                        "staticColor": "green"
-                      }
-                    },
-                    "textSettings": {
-                      "style": "bignumber"
-                    }
-                  },
-                  "customWidth": "20",
-                  "name": "group-container-reader-avg-duration"
-                },
-                {
-                  "type": 3,
-                  "content": {
-                    "version": "KqlItem/1.0",
-                    "query": "traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"bronze-layer\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize AvgDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2)",
-                    "size": 4,
-                    "title": "Worker - Avg Duration (ms)",
-                    "timeContextFromParameter": "TimeRange",
-                    "queryType": 0,
-                    "resourceType": "microsoft.insights/components",
-                    "crossComponentResources": [
-                      "{{APP_INSIGHTS_INGESTION}}"
-                    ],
-                    "visualization": "stat",
-                    "tileSettings": {
-                      "showBorder": true
-                    },
-                    "statSettings": {
-                      "valueTooltipSettings": {
-                        "tooltip": "Average worker process duration over the selected time range"
-                      },
-                      "tagText": "ms",
-                      "colorSettings": {
-                        "type": "static",
-                        "mode": "background",
-                        "staticColor": "blue"
-                      }
-                    },
-                    "textSettings": {
-                      "style": "bignumber"
-                    }
-                  },
-                  "customWidth": "20",
-                  "name": "group-container-worker-avg-duration"
-                },
-                {
-                  "type": 3,
-                  "content": {
-                    "version": "KqlItem/1.0",
-                    "query": "let reader_percs = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"bronze-layer\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| extend durationPerEventMs = durationUs / toreal(eventCount) / 1000\n| summarize rp25=round(percentile(durationPerEventMs, 25), 2), rp50=round(percentile(durationPerEventMs, 50), 2), rp75=round(percentile(durationPerEventMs, 75), 2)\n| extend _k=1;\nlet worker_percs = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"bronze-layer\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| extend durationPerEventMs = durationUs / toreal(eventCount) / 1000\n| summarize wp25=round(percentile(durationPerEventMs, 25), 2), wp50=round(percentile(durationPerEventMs, 50), 2), wp75=round(percentile(durationPerEventMs, 75), 2)\n| extend _k=1;\nreader_percs\n| join kind=inner worker_percs on _k\n| extend Quartile = dynamic([\"Q1\", \"Q2\", \"Q3\"])\n| extend Reader = pack_array(rp25, rp50, rp75)\n| extend Worker = pack_array(wp25, wp50, wp75)\n| mv-expand Quartile, Reader, Worker\n| project Quartile=tostring(Quartile), ReaderDurationMs=round(todouble(Reader), 2), WorkerDurationMs=round(todouble(Worker), 2)",
+                    "query": "let reader = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.bronze\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize ReaderDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2) by bin(timestamp, {Granularity});\nlet workers = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.bronze\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize WorkerDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2) by bin(timestamp, {Granularity});\nreader\n| join kind=fullouter workers on timestamp\n| project timestamp = coalesce(timestamp, timestamp1), ReaderDurationMs, WorkerDurationMs\n| sort by timestamp asc",
                     "size": 1,
-                    "title": "Reader & Worker - Duration Percentiles (ms)",
+                    "title": "Reader & Worker - Process Duration (ms)",
                     "timeContextFromParameter": "TimeRange",
                     "queryType": 0,
                     "resourceType": "microsoft.insights/components",
                     "crossComponentResources": [
                       "{{APP_INSIGHTS_INGESTION}}"
                     ],
-                    "visualization": "table",
-                    "gridSettings": {
-                      "formatters": [
+                    "visualization": "timechart",
+                    "chartSettings": {
+                      "seriesLabelSettings": [
                         {
-                          "columnMatch": "Quartile",
-                          "formatter": 0,
-                          "formatOptions": {
-                            "customColumnWidthSetting": "20%"
-                          }
+                          "seriesName": "ReaderDurationMs",
+                          "label": "Reader Duration (ms)",
+                          "color": "green"
                         },
                         {
-                          "columnMatch": "ReaderDurationMs",
-                          "formatter": 1,
-                          "formatOptions": {
-                            "customColumnWidthSetting": "40%"
-                          }
-                        },
-                        {
-                          "columnMatch": "WorkerDurationMs",
-                          "formatter": 1,
-                          "formatOptions": {
-                            "customColumnWidthSetting": "40%"
-                          }
-                        }
-                      ],
-                      "labelSettings": [
-                        {
-                          "columnId": "ReaderDurationMs",
-                          "label": "Reader Duration (ms)"
-                        },
-                        {
-                          "columnId": "WorkerDurationMs",
-                          "label": "Worker Duration (ms)"
+                          "seriesName": "WorkerDurationMs",
+                          "label": "Worker Duration (ms)",
+                          "color": "blue"
                         }
                       ]
                     }
                   },
-                  "customWidth": "60",
-                  "name": "group-container-process-duration-quartiles"
+                  "name": "group-container-process-duration-graph"
+                },
+                {
+                  "type": 12,
+                  "content": {
+                    "version": "NotebookGroup/1.0",
+                    "groupType": "editable",
+                    "items": [
+                      {
+                        "type": 3,
+                        "content": {
+                          "version": "KqlItem/1.0",
+                          "query": "traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.bronze\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize AvgDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2)",
+                          "size": 4,
+                          "title": "Reader - Avg Duration",
+                          "timeContextFromParameter": "TimeRange",
+                          "queryType": 0,
+                          "resourceType": "microsoft.insights/components",
+                          "crossComponentResources": [
+                            "{{APP_INSIGHTS_INGESTION}}"
+                          ],
+                          "visualization": "stat",
+                          "tileSettings": {
+                            "showBorder": true
+                          },
+                          "statSettings": {
+                            "valueTooltipSettings": {
+                              "tooltip": "Average reader process duration over the selected time range"
+                            },
+                            "tagText": "ms",
+                            "colorSettings": {
+                              "type": "static",
+                              "mode": "background",
+                              "staticColor": "green"
+                            }
+                          },
+                          "textSettings": {
+                            "style": "bignumber"
+                          }
+                        },
+                        "customWidth": "20",
+                        "name": "group-container-reader-avg-duration"
+                      },
+                      {
+                        "type": 3,
+                        "content": {
+                          "version": "KqlItem/1.0",
+                          "query": "traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.bronze\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize AvgDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2)",
+                          "size": 4,
+                          "title": "Worker - Avg Duration",
+                          "timeContextFromParameter": "TimeRange",
+                          "queryType": 0,
+                          "resourceType": "microsoft.insights/components",
+                          "crossComponentResources": [
+                            "{{APP_INSIGHTS_INGESTION}}"
+                          ],
+                          "visualization": "stat",
+                          "tileSettings": {
+                            "showBorder": true
+                          },
+                          "statSettings": {
+                            "valueTooltipSettings": {
+                              "tooltip": "Average worker process duration over the selected time range"
+                            },
+                            "tagText": "ms",
+                            "colorSettings": {
+                              "type": "static",
+                              "mode": "background",
+                              "staticColor": "blue"
+                            }
+                          },
+                          "textSettings": {
+                            "style": "bignumber"
+                          }
+                        },
+                        "customWidth": "20",
+                        "name": "group-container-worker-avg-duration"
+                      },
+                      {
+                        "type": 3,
+                        "content": {
+                          "version": "KqlItem/1.0",
+                          "query": "let reader_percs = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.bronze\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| extend durationPerEventMs = durationUs / toreal(eventCount) / 1000\n| summarize rp25=round(percentile(durationPerEventMs, 25), 2), rp50=round(percentile(durationPerEventMs, 50), 2), rp75=round(percentile(durationPerEventMs, 75), 2)\n| extend _k=1;\nlet worker_percs = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.bronze\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| extend durationPerEventMs = durationUs / toreal(eventCount) / 1000\n| summarize wp25=round(percentile(durationPerEventMs, 25), 2), wp50=round(percentile(durationPerEventMs, 50), 2), wp75=round(percentile(durationPerEventMs, 75), 2)\n| extend _k=1;\nreader_percs\n| join kind=inner worker_percs on _k\n| extend Quartile = dynamic([\"Q1\", \"Q2\", \"Q3\"])\n| extend Reader = pack_array(rp25, rp50, rp75)\n| extend Worker = pack_array(wp25, wp50, wp75)\n| mv-expand Quartile, Reader, Worker\n| project Quartile=tostring(Quartile), ReaderDurationMs=round(todouble(Reader), 2), WorkerDurationMs=round(todouble(Worker), 2)",
+                          "size": 1,
+                          "title": "Reader & Worker - Duration Percentiles (ms)",
+                          "timeContextFromParameter": "TimeRange",
+                          "queryType": 0,
+                          "resourceType": "microsoft.insights/components",
+                          "crossComponentResources": [
+                            "{{APP_INSIGHTS_INGESTION}}"
+                          ],
+                          "visualization": "table",
+                          "gridSettings": {
+                            "formatters": [
+                              {
+                                "columnMatch": "Quartile",
+                                "formatter": 0,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "20%"
+                                }
+                              },
+                              {
+                                "columnMatch": "ReaderDurationMs",
+                                "formatter": 1,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "40%"
+                                }
+                              },
+                              {
+                                "columnMatch": "WorkerDurationMs",
+                                "formatter": 1,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "40%"
+                                }
+                              }
+                            ],
+                            "labelSettings": [
+                              {
+                                "columnId": "ReaderDurationMs",
+                                "label": "Reader Duration (ms)"
+                              },
+                              {
+                                "columnId": "WorkerDurationMs",
+                                "label": "Worker Duration (ms)"
+                              }
+                            ]
+                          }
+                        },
+                        "customWidth": "60",
+                        "name": "group-container-process-duration-quartiles"
+                      }
+                    ]
+                  },
+                  "name": "group-container-process-duration-details"
                 }
               ]
             },
-            "name": "group-container-process-duration-details"
+            "customWidth": "50",
+            "name": "group-container-metrics"
           }
         ]
       },
-      "customWidth": "50",
-      "name": "group-container-metrics"
+      "conditionalVisibility": {
+        "parameterName": "SelectedTab",
+        "comparison": "isEqualTo",
+        "value": "bronze"
+      },
+      "name": "tab-bronze"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 12,
+            "content": {
+              "version": "NotebookGroup/1.0",
+              "groupType": "editable",
+              "items": [
+                {
+                  "type": 10,
+                  "content": {
+                    "chartId": "workbookb3c7d912-ef45-4a1b-9832-fd7842a1c3e5",
+                    "version": "MetricsItem/2.0",
+                    "size": 1,
+                    "chartType": 2,
+                    "resourceType": "microsoft.eventhub/namespaces",
+                    "metricScope": 0,
+                    "resourceIds": [
+                      "{{EVENT_HUB_INGESTION_TELEMETRY}}"
+                    ],
+                    "timeContextFromParameter": "TimeRange",
+                    "timeContext": {
+                      "durationMs": 1800000
+                    },
+                    "metrics": [
+                      {
+                        "namespace": "microsoft.eventhub/namespaces",
+                        "metric": "microsoft.eventhub/namespaces--IncomingMessages",
+                        "aggregation": 1
+                      },
+                      {
+                        "namespace": "microsoft.eventhub/namespaces",
+                        "metric": "microsoft.eventhub/namespaces--OutgoingMessages",
+                        "aggregation": 1
+                      }
+                    ],
+                    "title": "Event Hub - telemetry-metrics : Incoming / Outgoing Messages",
+                    "filters": [
+                      {
+                        "key": "EntityName",
+                        "operator": "==",
+                        "values": [
+                          "telemetry-metrics"
+                        ]
+                      }
+                    ],
+                    "gridSettings": {
+                      "rowLimit": 10000
+                    }
+                  },
+                  "name": "group-eventhub-metrics-messages"
+                },
+                {
+                  "type": 10,
+                  "content": {
+                    "chartId": "workbooka4e8f123-5b67-4c89-d012-ef1234567890",
+                    "version": "MetricsItem/2.0",
+                    "size": 1,
+                    "chartType": 2,
+                    "resourceType": "microsoft.app/containerapps",
+                    "metricScope": 0,
+                    "resourceIds": [
+                      "{{CONTAINER_APP_INGESTION_SILVER}}"
+                    ],
+                    "timeContextFromParameter": "TimeRange",
+                    "timeContext": {
+                      "durationMs": 1800000
+                    },
+                    "metrics": [
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-CpuPercentage",
+                        "aggregation": 4
+                      },
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-CpuPercentage",
+                        "aggregation": 3
+                      },
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-MemoryPercentage",
+                        "aggregation": 4
+                      },
+                      {
+                        "namespace": "microsoft.app/containerapps",
+                        "metric": "microsoft.app/containerapps-Basic-MemoryPercentage",
+                        "aggregation": 3
+                      }
+                    ],
+                    "title": "CPU / Memory - Usage (%)",
+                    "gridSettings": {
+                      "rowLimit": 10000
+                    }
+                  },
+                  "name": "silver-group-container-cpu-memory-percentage"
+                }
+              ]
+            },
+            "customWidth": "50",
+            "name": "silver-group-core-ressources"
+          },
+          {
+            "type": 12,
+            "content": {
+              "version": "NotebookGroup/1.0",
+              "groupType": "editable",
+              "items": [
+                {
+                  "type": 3,
+                  "content": {
+                    "version": "KqlItem/1.0",
+                    "query": "let reader = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.silver\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize ReaderDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2) by bin(timestamp, {Granularity});\nlet workers = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.silver\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize WorkerDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2) by bin(timestamp, {Granularity});\nreader\n| join kind=fullouter workers on timestamp\n| project timestamp = coalesce(timestamp, timestamp1), ReaderDurationMs, WorkerDurationMs\n| sort by timestamp asc",
+                    "size": 1,
+                    "title": "Reader & Worker - Process Duration (ms)",
+                    "timeContextFromParameter": "TimeRange",
+                    "queryType": 0,
+                    "resourceType": "microsoft.insights/components",
+                    "crossComponentResources": [
+                      "{{APP_INSIGHTS_INGESTION}}"
+                    ],
+                    "visualization": "timechart",
+                    "chartSettings": {
+                      "seriesLabelSettings": [
+                        {
+                          "seriesName": "ReaderDurationMs",
+                          "label": "Reader Duration (ms)",
+                          "color": "green"
+                        },
+                        {
+                          "seriesName": "WorkerDurationMs",
+                          "label": "Worker Duration (ms)",
+                          "color": "blue"
+                        }
+                      ]
+                    }
+                  },
+                  "name": "silver-group-container-process-duration-graph"
+                },
+                {
+                  "type": 12,
+                  "content": {
+                    "version": "NotebookGroup/1.0",
+                    "groupType": "editable",
+                    "items": [
+                      {
+                        "type": 3,
+                        "content": {
+                          "version": "KqlItem/1.0",
+                          "query": "traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.silver\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize AvgDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2)",
+                          "size": 4,
+                          "title": "Reader - Avg Duration",
+                          "timeContextFromParameter": "TimeRange",
+                          "queryType": 0,
+                          "resourceType": "microsoft.insights/components",
+                          "crossComponentResources": [
+                            "{{APP_INSIGHTS_INGESTION}}"
+                          ],
+                          "visualization": "stat",
+                          "tileSettings": {
+                            "showBorder": true
+                          },
+                          "statSettings": {
+                            "valueTooltipSettings": {
+                              "tooltip": "Average reader process duration over the selected time range"
+                            },
+                            "tagText": "ms",
+                            "colorSettings": {
+                              "type": "static",
+                              "mode": "background",
+                              "staticColor": "green"
+                            }
+                          },
+                          "textSettings": {
+                            "style": "bignumber"
+                          }
+                        },
+                        "customWidth": "20",
+                        "name": "silver-group-container-reader-avg-duration"
+                      },
+                      {
+                        "type": 3,
+                        "content": {
+                          "version": "KqlItem/1.0",
+                          "query": "traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.silver\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| summarize AvgDurationMs = round(avg(durationUs / toreal(eventCount) / 1000), 2)",
+                          "size": 4,
+                          "title": "Worker - Avg Duration",
+                          "timeContextFromParameter": "TimeRange",
+                          "queryType": 0,
+                          "resourceType": "microsoft.insights/components",
+                          "crossComponentResources": [
+                            "{{APP_INSIGHTS_INGESTION}}"
+                          ],
+                          "visualization": "stat",
+                          "tileSettings": {
+                            "showBorder": true
+                          },
+                          "statSettings": {
+                            "valueTooltipSettings": {
+                              "tooltip": "Average worker process duration over the selected time range"
+                            },
+                            "tagText": "ms",
+                            "colorSettings": {
+                              "type": "static",
+                              "mode": "background",
+                              "staticColor": "blue"
+                            }
+                          },
+                          "textSettings": {
+                            "style": "bignumber"
+                          }
+                        },
+                        "customWidth": "20",
+                        "name": "silver-group-container-worker-avg-duration"
+                      },
+                      {
+                        "type": 3,
+                        "content": {
+                          "version": "KqlItem/1.0",
+                          "query": "let reader_percs = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.silver\"\n| where message matches regex @\"\\] R\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| extend durationPerEventMs = durationUs / toreal(eventCount) / 1000\n| summarize rp25=round(percentile(durationPerEventMs, 25), 2), rp50=round(percentile(durationPerEventMs, 50), 2), rp75=round(percentile(durationPerEventMs, 75), 2)\n| extend _k=1;\nlet worker_percs = traces\n| where timestamp {TimeRange}\n| where tostring(customDimensions[\"service.name\"]) == \"service.ingestion\"\n| where tostring(customDimensions[\"service.layer\"]) == \"layer.silver\"\n| where message matches regex @\"\\] W[0-9]+\\|\"\n| extend durationStr = tostring(split(message, \"|\")[1])\n| extend eventCountStr = tostring(split(message, \"|\")[2])\n| extend durationUs = todouble(extract(@\"^([0-9.]+)\", 1, durationStr))\n| extend eventCount = toint(replace_string(eventCountStr, \"e\", \"\"))\n| where isnotnull(durationUs) and eventCount > 0\n| extend durationPerEventMs = durationUs / toreal(eventCount) / 1000\n| summarize wp25=round(percentile(durationPerEventMs, 25), 2), wp50=round(percentile(durationPerEventMs, 50), 2), wp75=round(percentile(durationPerEventMs, 75), 2)\n| extend _k=1;\nreader_percs\n| join kind=inner worker_percs on _k\n| extend Quartile = dynamic([\"Q1\", \"Q2\", \"Q3\"])\n| extend Reader = pack_array(rp25, rp50, rp75)\n| extend Worker = pack_array(wp25, wp50, wp75)\n| mv-expand Quartile, Reader, Worker\n| project Quartile=tostring(Quartile), ReaderDurationMs=round(todouble(Reader), 2), WorkerDurationMs=round(todouble(Worker), 2)",
+                          "size": 1,
+                          "title": "Reader & Worker - Duration Percentiles (ms)",
+                          "timeContextFromParameter": "TimeRange",
+                          "queryType": 0,
+                          "resourceType": "microsoft.insights/components",
+                          "crossComponentResources": [
+                            "{{APP_INSIGHTS_INGESTION}}"
+                          ],
+                          "visualization": "table",
+                          "gridSettings": {
+                            "formatters": [
+                              {
+                                "columnMatch": "Quartile",
+                                "formatter": 0,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "20%"
+                                }
+                              },
+                              {
+                                "columnMatch": "ReaderDurationMs",
+                                "formatter": 1,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "40%"
+                                }
+                              },
+                              {
+                                "columnMatch": "WorkerDurationMs",
+                                "formatter": 1,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "40%"
+                                }
+                              }
+                            ],
+                            "labelSettings": [
+                              {
+                                "columnId": "ReaderDurationMs",
+                                "label": "Reader Duration (ms)"
+                              },
+                              {
+                                "columnId": "WorkerDurationMs",
+                                "label": "Worker Duration (ms)"
+                              }
+                            ]
+                          }
+                        },
+                        "customWidth": "60",
+                        "name": "silver-group-container-process-duration-quartiles"
+                      }
+                    ]
+                  },
+                  "name": "silver-group-container-process-duration-details"
+                }
+              ]
+            },
+            "customWidth": "50",
+            "name": "silver-group-container-metrics"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "SelectedTab",
+        "comparison": "isEqualTo",
+        "value": "silver"
+      },
+      "name": "tab-silver"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": []
+      },
+      "conditionalVisibility": {
+        "parameterName": "SelectedTab",
+        "comparison": "isEqualTo",
+        "value": "gold"
+      },
+      "name": "tab-gold"
     }
   ],
   "styleSettings": {

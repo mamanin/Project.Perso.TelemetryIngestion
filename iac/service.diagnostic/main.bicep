@@ -41,6 +41,10 @@ resource bronzeContainerApp 'Microsoft.App/containerApps@2025-10-02-preview' exi
   name: BuildResourceName(prefix, 'aca', '001')
 }
 
+resource silverContainerApp 'Microsoft.App/containerApps@2025-10-02-preview' existing = {
+  name: BuildResourceName(prefix, 'aca', '002')
+}
+
 // -----------------------------------------------------------------------
 // Service Core
 // -----------------------------------------------------------------------
@@ -67,6 +71,11 @@ module ingestionWorkbook '../common/modules/workbook.module.bicep' = {
         typeTemplate: 'ContainerApp'
         key: 'ingestion-bronze'
         id: bronzeContainerApp.id
+      }
+      {
+        typeTemplate: 'ContainerApp'
+        key: 'ingestion-silver'
+        id: silverContainerApp.id
       }
     ]
   }
