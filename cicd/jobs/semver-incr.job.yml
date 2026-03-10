@@ -1,0 +1,48 @@
+parameters:
+  - name: organizationUrl
+    type: string
+  - name: projectName
+    type: string
+  - name: versionGroupName
+    type: string
+  - name: versionKey
+    type: string
+  - name: versionIncrement
+    type: string
+    default: patch
+    values:
+      - major
+      - minor
+      - patch
+  - name: enableVersionSuffix
+    type: boolean
+    default: false
+  - name: suffix
+    type: string
+    default: "alpha"
+
+jobs:
+  - job: SemVerIncrement
+    displayName: "SemVer increment"
+
+    steps:
+      - checkout: self
+        displayName: "Checkout repository"
+        fetchDepth: 1
+
+      - bash: chmod +x "$(Build.SourcesDirectory)/cicd/scripts/semver-incr.script.sh"
+        displayName: "Set script permissions"
+
+      - bash: |
+          "$(Build.SourcesDirectory)/cicd/scripts/semver-incr.script.sh" \
+            "${{ parameters.organizationUrl }}" \
+            "${{ parameters.projectName }}" \
+            "${{ parameters.versionGroupName }}" \
+            "${{ parameters.versionKey }}" \
+            "${{ parameters.versionIncrement }}" \
+            "${{ parameters.enableVersionSuffix }}" \
+            "${{ parameters.suffix }}"
+        name: SemVerIncrement
+        displayName: "SemVer increment"
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)

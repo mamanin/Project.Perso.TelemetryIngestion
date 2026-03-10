@@ -7,6 +7,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"service.ingestion/external/cache/redis"
+	"service.ingestion/external/credential"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/core/observability/logger"
@@ -26,6 +27,7 @@ type App struct {
 	cfg *Config
 
 	logger        logger.Logger
+	cred          credential.AzureCredentials
 	orchestrator  *processor.Processor
 	redis         *redis.Client
 	subscriber    *eventhub.Subscriber
@@ -55,7 +57,13 @@ func NewApp(ctx context.Context) (AppManager, error) {
 		logger: log,
 	}
 
-	app.initializeRedis()
+	if err = app.initializeCredentials(); err != nil {
+		return nil, fmt.Errorf("failed to initialize credentials: %w", err)
+	}
+
+	if err = app.initializeRedis(); err != nil {
+		return nil, fmt.Errorf("failed to initialize redis client: %w", err)
+	}
 
 	if err = app.initializeOrchestrator(); err != nil {
 		return nil, fmt.Errorf("failed to initialize processor: %w", err)
@@ -108,6 +116,29 @@ func (a *App) Stop(ctx context.Context) {
 	a.logger.Info("Silver worker shutdown complete")
 }
 
+// initializeCredentials retrieves Azure credentials for the application.
+func (a *App) initializeCredentials() error {
+	cred, err := credential.NewAzureDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get azure credentials: %w", err)
+	}
+
+	a.cred = cred
+	return nil
+}
+
+// initializeRedis sets up the redis cache.
+func (a *App) initializeRedis() error {
+	r, err := redis.NewRedis(redis.Config{})
+
+	if err != nil {
+		return fmt.Errorf("failed to initialize redis client: %w", err)
+	}
+
+	a.redis = r
+	return nil
+}
+
 // initializeOrchestrator sets up the orchestrator with its dependencies.
 func (a *App) initializeOrchestrator() error {
 	p, s, err := a.initializeMessaging()
@@ -134,30 +165,23 @@ func (a *App) initializeOrchestrator() error {
 
 // initializeMessaging sets up the messaging services.
 func (a *App) initializeMessaging() (*eventhub.Publisher, *eventhub.Subscriber, error) {
-	cp, err := container.NewCheckpoint(container.Config{})
+	cp, err := container.NewCheckpoint(container.Config{}, a.cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create checkpoint store: %w", err)
 	}
 
-	p, err := eventhub.NewPublisher(eventhub.Config{})
+	p, err := eventhub.NewPublisher(eventhub.Config{}, a.cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create event hub publisher: %w", err)
 	}
 
-	s, err := eventhub.NewSubscriber(a.logger, eventhub.SubscriberConfig{}, cp)
+	s, err := eventhub.NewSubscriber(a.logger, eventhub.Config{}, a.cred, cp)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}
 
 	a.subscriber = s
 	return p, s, nil
-}
-
-// initializeRedis sets up the redis cache.
-func (a *App) initializeRedis() {
-	r := redis.NewRedis(redis.Config{})
-
-	a.redis = r
 }
 
 // initializeProbesManager sets up the health check manager.

@@ -30,9 +30,15 @@ param tags object = {}
 ])
 param sku string = 'Basic'
 
-@description('Units for Event Hub Namespace SKU')
+@description('Capacity for Event Hub Namespace SKU')
 @minValue(1)
-param units int = 1
+param capacity int = 1
+
+@description('Whether to enable auto-inflate for the Event Hub Namespace')
+param isAutoInflateEnabled bool = false
+
+@description('Maximum throughput units for auto-inflate (applicable only if auto-inflate is enabled)')
+param maximumThroughputUnits int = 0
 
 resource namespace 'Microsoft.EventHub/namespaces@2025-05-01-preview' = {
   name: BuildResourceName(prefix, 'ehn', number)
@@ -44,12 +50,12 @@ resource namespace 'Microsoft.EventHub/namespaces@2025-05-01-preview' = {
   sku: {
     name: sku
     tier: sku
-    capacity: units
+    capacity: capacity
   }
   properties: {
     minimumTlsVersion: '1.2'
-    isAutoInflateEnabled: true
-    maximumThroughputUnits: 0
+    isAutoInflateEnabled: isAutoInflateEnabled
+    maximumThroughputUnits: maximumThroughputUnits
     kafkaEnabled: true
     zoneRedundant: false
     disableLocalAuth: true

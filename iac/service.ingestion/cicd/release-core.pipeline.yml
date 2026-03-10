@@ -1,0 +1,44 @@
+trigger: none
+
+parameters:
+  - name: deployBronze
+    displayName: "Deploy bronze related resources"
+    type: boolean
+    default: true
+  - name: deploySilver
+    displayName: "Deploy silver related resources"
+    type: boolean
+    default: false
+  - name: deployGold
+    displayName: "Deploy gold related resources"
+    type: boolean
+    default: false
+
+pool:
+  vmImage: "ubuntu-22.04"
+
+variables:
+  - group: tispoc
+  - name: location
+    value: "France Central"
+  - name: bicepFilePath
+    value: "iac/service.ingestion/main.bicep"
+  - name: deploymentName
+    value: "release-ingestion-core-$(Build.BuildId)"
+
+stages:
+  - stage: DeployInfrastructure
+    displayName: "Deploy core infrastructure"
+    jobs:
+      - template: ../../../cicd/jobs/deploy-infra.job.yml
+        parameters:
+          deploymentName: $(deploymentName)
+          subscriptionId: $(subscriptionId)
+          resourceGroupName: $(resourceGroupName)
+          location: $(location)
+          bicepFilePath: $(bicepFilePath)
+          azureSubscription: $(armServiceConnectionName)
+          overrideParameters: >-
+            -deployBronze ${{ parameters.deployBronze }}
+            -deploySilver ${{ parameters.deploySilver }}
+            -deployGold ${{ parameters.deployGold }}

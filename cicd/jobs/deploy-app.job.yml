@@ -1,0 +1,37 @@
+parameters:
+  - name: buildContext
+    type: string
+  - name: dockerfilePath
+    type: string
+  - name: repository
+    type: string
+  - name: containerRegistryConnection
+    type: string
+  - name: tags
+    type: string
+  - name: buildArgs
+    type: string
+    default: ""
+
+jobs:
+  - job: BuildAndPushDockerImage
+    displayName: "Build and push docker image"
+    steps:
+      - task: Docker@2
+        displayName: "Login"
+        inputs:
+          command: login
+          containerRegistry: ${{ parameters.containerRegistryConnection }}
+
+      - task: Docker@2
+        displayName: "Build and push container image"
+        inputs:
+          command: "buildAndPush"
+          containerRegistry: "${{ parameters.containerRegistryConnection }}"
+          repository: "${{ parameters.repository }}"
+          dockerfile: "${{ parameters.dockerfilePath }}"
+          buildContext: "${{ parameters.buildContext }}"
+          tags: ${{ parameters.tags }}
+          buildArgs: ${{ parameters.buildArgs }}
+          addPipelineData: false
+          addBaseImageData: false

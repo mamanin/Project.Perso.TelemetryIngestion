@@ -1,0 +1,58 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - iac/service.ingestion/**
+
+pool:
+  vmImage: "ubuntu-22.04"
+
+variables:
+  - group: tispoc
+  - name: location
+    value: "France Central"
+  - name: deploymentName
+    value: "ci-ingestion-layers-$(Build.BuildId)"
+
+stages:
+  - stage: BuildInfrastructure
+    displayName: "Build layers infrastructure"
+    jobs:
+      - template: ../../../cicd/jobs/build-infra.job.yml
+        parameters:
+          jobName: "IngestionBronze"
+          deploymentName: $(deploymentName)
+          subscriptionId: $(subscriptionId)
+          resourceGroupName: $(resourceGroupName)
+          location: $(location)
+          bicepFilePath: "iac/service.ingestion/bronze.bicep"
+          azureSubscription: $(armServiceConnectionName)
+          overrideParameters: >-
+            -version "{{placeholder}}"
+
+      - template: ../../../cicd/jobs/build-infra.job.yml
+        parameters:
+          jobName: "IngestionSilver"
+          deploymentName: $(deploymentName)
+          subscriptionId: $(subscriptionId)
+          resourceGroupName: $(resourceGroupName)
+          location: $(location)
+          bicepFilePath: "iac/service.ingestion/silver.bicep"
+          azureSubscription: $(armServiceConnectionName)
+          overrideParameters: >-
+            -version "{{placeholder}}"
+
+      - template: ../../../cicd/jobs/build-infra.job.yml
+        parameters:
+          jobName: "IngestionGold"
+          deploymentName: $(deploymentName)
+          subscriptionId: $(subscriptionId)
+          resourceGroupName: $(resourceGroupName)
+          location: $(location)
+          bicepFilePath: "iac/service.ingestion/gold.bicep"
+          azureSubscription: $(armServiceConnectionName)
+          overrideParameters: >-
+            -version "{{placeholder}}"
+

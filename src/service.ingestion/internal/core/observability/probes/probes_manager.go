@@ -35,7 +35,7 @@ func NewManager(c []Checker, logger logger.Logger) (*Manager, error) {
 func (hm *Manager) StartProbes(ctx context.Context) error {
 	var errors []error
 	for _, p := range hm.probes {
-		hm.logger.Info(fmt.Sprintf("Starting health probe %s", p.Name()))
+		hm.logger.Info("Starting health probe %s", p.Name())
 		if err := p.Start(ctx); err != nil {
 			errors = append(errors, fmt.Errorf("failed to start probe %s: %w", p.Name(), err))
 		}

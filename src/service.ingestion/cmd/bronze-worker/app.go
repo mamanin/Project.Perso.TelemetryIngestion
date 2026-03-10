@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"service.ingestion/external/credential"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/bronze"
@@ -26,6 +27,7 @@ type App struct {
 	cfg *Config
 
 	logger        logger.Logger
+	cred          credential.AzureCredentials
 	orchestrator  *processor.Processor
 	subscriber    *eventhub.Subscriber
 	probesManager *probes.Manager
@@ -36,10 +38,7 @@ func NewApp(ctx context.Context) (AppManager, error) {
 	tCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	log, err := logger.NewOtelLogger(
-		tCtx,
-		attribute.String("service.layer", "bronze-layer"),
-	)
+	log, err := logger.NewOtelLogger(tCtx, attribute.String("service.layer", "bronze-layer"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize open telemetry logger: %w", err)
 	}
@@ -52,6 +51,10 @@ func NewApp(ctx context.Context) (AppManager, error) {
 	app := &App{
 		cfg:    cfg,
 		logger: log,
+	}
+
+	if err = app.initializeCredentials(); err != nil {
+		return nil, fmt.Errorf("failed to initialize credentials: %w", err)
 	}
 
 	if err = app.initializeOrchestrator(); err != nil {
@@ -101,6 +104,17 @@ func (a *App) Stop(ctx context.Context) {
 	a.logger.Info("Bronze worker shutdown complete")
 }
 
+// initializeCredentials retrieves Azure credentials for the application.
+func (a *App) initializeCredentials() error {
+	cred, err := credential.NewAzureDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get azure credentials: %w", err)
+	}
+
+	a.cred = cred
+	return nil
+}
+
 // initializeOrchestrator sets up the orchestrator with its dependencies.
 func (a *App) initializeOrchestrator() error {
 	p, s, err := a.initializeMessaging()
@@ -108,26 +122,12 @@ func (a *App) initializeOrchestrator() error {
 		return fmt.Errorf("failed to initialize event hub subscriber: %w", err)
 	}
 
-	h2 := bronze.NewV2Handler(a.logger, p)
-	h1 := bronze.NewV1Handler(a.logger, p)
-	lh := bronze.NewLegacyHandler(a.logger, p)
-
-	o := processor.NewProcessor(
-		processor.Config{
-			Workers: 0,
-		},
-		a.logger,
-		s,
-		func(i int) processor.Worker {
-			return bronze.NewWorker(i, a.logger,
-				[]processor.VersionAdapter{
-					processor.NewHandlerAdapter(pkg.V2, 0, h2),
-					processor.NewHandlerAdapter(pkg.V1, 0, h1),
-				},
-				processor.NewHandlerAdapter(pkg.Legacy, 0, lh),
-			)
-		},
-	)
+	o := processor.NewProcessor(a.cfg.Processor, a.logger, s, func(i int) processor.Worker {
+		return bronze.NewWorker(i, a.logger, []processor.VersionAdapter{
+			processor.NewHandlerAdapter(pkg.V2, a.cfg.EventHub.Subscriber.BatchSize, bronze.NewV2Handler(a.logger, p)),
+			processor.NewHandlerAdapter(pkg.V1, a.cfg.EventHub.Subscriber.BatchSize, bronze.NewV1Handler(a.logger, p)),
+		}, processor.NewHandlerAdapter(pkg.Legacy, a.cfg.EventHub.Subscriber.BatchSize, bronze.NewLegacyHandler(a.logger, p)))
+	})
 
 	a.orchestrator = o
 	return nil
@@ -135,25 +135,17 @@ func (a *App) initializeOrchestrator() error {
 
 // initializeMessaging sets up the messaging services.
 func (a *App) initializeMessaging() (*eventhub.Publisher, *eventhub.Subscriber, error) {
-	cp, err := container.NewCheckpoint(container.Config{})
+	cp, err := container.NewCheckpoint(a.cfg.Container, a.cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create checkpoint store: %w", err)
 	}
 
-	p, err := eventhub.NewPublisher(eventhub.Config{})
+	p, err := eventhub.NewPublisher(a.cfg.EventHub, a.cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create event hub publisher: %w", err)
 	}
 
-	s, err := eventhub.NewSubscriber(
-		a.logger,
-		eventhub.SubscriberConfig{
-			Config:       eventhub.Config{},
-			BatchSize:    0,
-			PrefetchSize: 0,
-		},
-		cp,
-	)
+	s, err := eventhub.NewSubscriber(a.logger, a.cfg.EventHub, a.cred, cp)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}

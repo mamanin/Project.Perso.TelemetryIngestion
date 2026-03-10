@@ -1,14 +1,26 @@
 // =======================================================================
-// Core Infrastructure Deployment
+// Ingestion Core Infrastructure Deployment
 // -----------------------------------------------------------------------
-// Module: deploy-infra.bicep
-// Description: Deploys the core infrastructure resources required for the
-//       different layers of the telemetry ingestion service. 
+// Module: main.bicep
+// Description: Deploys the ingestion core infrastructure resources 
+//       required for the different layers of the telemetry ingestion
+//       service.
 // =======================================================================
+
+import { ingestionConstants } from './constants/ingestion.constants.bicep'
 
 // -----------------------------------------------------------------------
 // Parameters and Variables
 // -----------------------------------------------------------------------
+
+@description('Whether to deploy the Bronze layer resources.')
+param deployBronze string = ''
+
+@description('Whether to deploy the Silver layer resources.')
+param deploySilver string = ''
+
+@description('Whether to deploy the Gold layer resources.')
+param deployGold string = ''
 
 @description('The name of the resource group to deploy to')
 var location = resourceGroup().location
@@ -20,23 +32,30 @@ var prefix = 'tispoc'
 var tags = {
   project: prefix
   'managed-by': 'bicep'
+  service: 'ingestion'
+}
+
+@description('Object to control layer deployments based on parameters')
+var layerDeployment = {
+  bronze: deployBronze == 'True' ? true : false
+  silver: deploySilver == 'True' ? true : false
+  gold: deployGold == 'True' ? true : false
 }
 
 // -----------------------------------------------------------------------
 // Monitoring & Logging
 // -----------------------------------------------------------------------
 
-module logAnalytics './modules/loganalytics.module.bicep' = {
+module logAnalytics '../common/modules/loganalytics.module.bicep' = {
   name: 'logAnalyticsDeploy'
   params: {
     prefix: prefix
     location: location
     tags: tags
-    retentionInDays: 10
   }
 }
 
-module appInsights './modules/appinsights.module.bicep' = {
+module appInsights '../common/modules/appinsights.module.bicep' = {
   name: 'appInsightsDeploy'
   params: {
     prefix: prefix
@@ -50,7 +69,7 @@ module appInsights './modules/appinsights.module.bicep' = {
 // Application Support Infrastructure
 // -----------------------------------------------------------------------
 
-module containerRegistry './modules/containerregistry.module.bicep' = {
+module containerRegistry '../common/modules/containerregistry.module.bicep' = {
   name: 'containerRegistryDeploy'
   params: {
     prefix: prefix
@@ -60,7 +79,7 @@ module containerRegistry './modules/containerregistry.module.bicep' = {
   }
 }
 
-module containerAppEnvironment './modules/containerappenv.module.bicep' = {
+module containerAppEnvironment '../common/modules/containerappenv.module.bicep' = {
   name: 'containerAppEnvironmentDeploy'
   params: {
     prefix: prefix
@@ -76,7 +95,7 @@ module containerAppEnvironment './modules/containerappenv.module.bicep' = {
 // Storage Resources
 // -----------------------------------------------------------------------
 
-module storageAccount './modules/storageaccount.module.bicep' = {
+module storageAccount '../common/modules/storageaccount.module.bicep' = {
   name: 'storageAccountDeploy'
   params: {
     prefix: prefix
@@ -87,7 +106,7 @@ module storageAccount './modules/storageaccount.module.bicep' = {
   }
 }
 
-module storageAccountBlobs './modules/storageaccount.containers.module.bicep' = {
+module storageAccountBlobs '../common/modules/storageaccount.containers.module.bicep' = {
   name: 'storageAccountBlobsDeploy'
   params: {
     storageAccountName: storageAccount.outputs.name
@@ -100,7 +119,7 @@ module storageAccountBlobs './modules/storageaccount.containers.module.bicep' = 
   }
 }
 
-module redisCache './modules/redis.module.bicep' = {
+module redisCache '../common/modules/redis.module.bicep' = if (layerDeployment.silver) {
   name: 'redisCacheDeploy'
   params: {
     prefix: prefix
@@ -115,7 +134,7 @@ module redisCache './modules/redis.module.bicep' = {
   }
 }
 
-module kustoCluster './modules/kusto.cluster.module.bicep' = {
+module kustoCluster '../common/modules/kusto.cluster.module.bicep' = if (layerDeployment.gold) {
   name: 'kustoClusterDeploy'
   params: {
     prefix: prefix
@@ -130,10 +149,10 @@ module kustoCluster './modules/kusto.cluster.module.bicep' = {
   }
 }
 
-module kustoDatabase './modules/kusto.cluster.database.module.bicep' = {
+module kustoDatabase '../common/modules/kusto.cluster.database.module.bicep' = if (layerDeployment.gold) {
   name: 'kustoDatabaseDeploy'
   params: {
-    kustoClusterName: kustoCluster.outputs.kustoClusterName
+    kustoClusterName: kustoCluster!.outputs.kustoClusterName
     databaseName: 'telemetries'
     scripts: [
       {
@@ -169,41 +188,43 @@ module kustoDatabase './modules/kusto.cluster.database.module.bicep' = {
 // Real-time Communication
 // -----------------------------------------------------------------------
 
-module eventHubNamespace './modules/eventhub.namespace.module.bicep' = {
+module eventHubNamespace '../common/modules/eventhub.namespace.module.bicep' = {
   name: 'eventHubNamespaceDeploy'
   params: {
     prefix: prefix
     location: location
     tags: tags
-    sku: 'Basic'
-    units: 4
+    sku: 'Standard'
+    capacity: 1
+    isAutoInflateEnabled: true
+    maximumThroughputUnits: 4
   }
 }
 
-module rawEventHub './modules/eventhub.module.bicep' = {
+module rawEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.bronze) {
   name: 'rawEventHubDeploy'
   params: {
     name: 'telemetry-raw'
     namespaceName: eventHubNamespace.outputs.name
-    partitionCount: 3
+    partitionCount: ingestionConstants.bronze.partitionCount
   }
 }
 
-module metricsEventHub './modules/eventhub.module.bicep' = {
+module metricsEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.bronze) {
   name: 'metricsEventHubDeploy'
   params: {
     name: 'telemetry-metrics'
     namespaceName: eventHubNamespace.outputs.name
-    partitionCount: 6
+    partitionCount: ingestionConstants.silver.partitionCount
   }
 }
 
-module dataEventHub './modules/eventhub.module.bicep' = {
+module dataEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.silver) {
   name: 'dataEventHubDeploy'
   params: {
     name: 'telemetry-data'
     namespaceName: eventHubNamespace.outputs.name
-    partitionCount: 6
+    partitionCount: ingestionConstants.gold.partitionCount
   }
 }
 
@@ -211,11 +232,11 @@ module dataEventHub './modules/eventhub.module.bicep' = {
 // Access Management
 // -----------------------------------------------------------------------
 
-module redisAccessPolicy './modules/redis.accesspolicy.module.bicep' = {
+module redisAccessPolicy '../common/modules/redis.accesspolicy.module.bicep' = if (layerDeployment.silver) {
   name: 'redisAccessPolicyDeploy'
   params: {
-    redisName: redisCache.outputs.name
+    redisName: redisCache!.outputs.name
     name: 'telemetry-ingestion-silver-layer-policy'
-    permissions: '~service.ingestion:silver:* +@read +@write'
+    permissions: ' +@read +@write ~service.ingestion:silver:*'
   }
 }

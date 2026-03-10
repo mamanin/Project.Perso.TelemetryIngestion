@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	_ "go.uber.org/automaxprocs"
 )
 
 // main is the entry point for the gold worker.

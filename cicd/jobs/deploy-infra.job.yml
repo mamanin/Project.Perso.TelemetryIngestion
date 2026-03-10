@@ -1,0 +1,35 @@
+parameters:
+  - name: deploymentName
+    type: string
+  - name: subscriptionId
+    type: string
+  - name: resourceGroupName
+    type: string
+  - name: location
+    type: string
+  - name: azureSubscription
+    type: string
+  - name: bicepFilePath
+    type: string
+  - name: overrideParameters
+    type: string
+    default: ""
+
+jobs:
+  - job: DeployInfrastructure
+    displayName: "Deploy infrastructure"
+    steps:
+      - task: AzureResourceManagerTemplateDeployment@3
+        displayName: "Deploy bicep template"
+        inputs:
+          deploymentMode: "Incremental"
+          deploymentScope: "Resource Group"
+          azureResourceManagerConnection: "${{ parameters.azureSubscription }}"
+          subscriptionId: "${{ parameters.subscriptionId }}"
+          action: "Create Or Update Resource Group"
+          resourceGroupName: "${{ parameters.resourceGroupName }}"
+          location: "${{ parameters.location }}"
+          templateLocation: "Linked artifact"
+          csmFile: "${{ parameters.bicepFilePath }}"
+          deploymentName: "${{ parameters.deploymentName }}"
+          overrideParameters: ${{ parameters.overrideParameters }}

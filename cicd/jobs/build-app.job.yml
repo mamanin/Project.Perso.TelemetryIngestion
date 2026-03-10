@@ -1,0 +1,50 @@
+parameters:
+  - name: goVersion
+    type: string
+  - name: servicePath
+    type: string
+  # List of the commands to build as:
+  # - name: "command-name"
+  # - path: "cmd/command-name"
+  - name: cmds
+    type: object
+
+jobs:
+  - job: BuildService
+    displayName: "Build service"
+    steps:
+      - task: GoTool@0
+        displayName: "Use Go ${{ parameters.goVersion }}"
+        inputs:
+          version: "${{ parameters.goVersion }}"
+
+      - script: |
+          cd ${{ parameters.servicePath }}
+          go mod download
+        displayName: "Download Go dependencies"
+        workingDirectory: $(System.DefaultWorkingDirectory)
+
+      - script: |
+          cd ${{ parameters.servicePath }}
+          go mod verify
+        displayName: "Verify Go dependencies"
+        workingDirectory: $(System.DefaultWorkingDirectory)
+
+      - script: |
+          cd ${{ parameters.servicePath }}
+          go vet ./...
+        displayName: "Run go vet static analysis"
+        workingDirectory: $(System.DefaultWorkingDirectory)
+
+      - script: |
+          cd ${{ parameters.servicePath }}
+          go build -v ./...
+        displayName: "Build service application"
+        workingDirectory: $(System.DefaultWorkingDirectory)
+
+      - ${{ each cmd in parameters.cmds }}:
+          - script: |
+              cd ${{ parameters.servicePath }}
+              go build -o ${{ cmd.name }} ./${{ cmd.path }}
+            displayName: "Build ${{ cmd.name }} binary"
+            workingDirectory: $(System.DefaultWorkingDirectory)

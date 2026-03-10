@@ -24,12 +24,12 @@ type AspireConfig struct {
 }
 
 // NewRedis creates a new redis.Client based on the provided configuration.
-func NewRedis(_ Config) *Client {
+func NewRedis(_ Config) (*Client, error) {
 	panic("not implemented")
 }
 
 // NewRedisForAspire creates a new redis.Client based on the provided Aspire configuration.
-func NewRedisForAspire(cfg AspireConfig) *Client {
+func NewRedisForAspire(cfg AspireConfig) (*Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password:     cfg.Password,
@@ -41,5 +41,9 @@ func NewRedisForAspire(cfg AspireConfig) *Client {
 		},
 	})
 
-	return client
+	if client == nil {
+		return nil, fmt.Errorf("failed to create Redis client")
+	}
+
+	return client, nil
 }

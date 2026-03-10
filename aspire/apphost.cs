@@ -1,8 +1,8 @@
-﻿#:package Aspire.Hosting.Azure.EventHubs@13.1.1
-#:package Aspire.Hosting.Azure.Kusto@13.1.1-preview.1.26105.8
-#:package Aspire.Hosting.Azure.Storage@13.1.1
-#:package Aspire.Hosting.Redis@13.1.1
-#:sdk Aspire.AppHost.Sdk@13.1.1
+﻿#:package Aspire.Hosting.Azure.EventHubs@13.1.2
+#:package Aspire.Hosting.Azure.Kusto@13.1.2-preview.1.26125.13
+#:package Aspire.Hosting.Azure.Storage@13.1.2
+#:package Aspire.Hosting.Redis@13.1.2
+#:sdk Aspire.AppHost.Sdk@13.1.2
 #:package CommunityToolkit.Aspire.Hosting.Golang@13.0.0
 #:package LupusBytes.Aspire.Hosting.Azure.EventHubs.LiveExplorer@2.0.0
 

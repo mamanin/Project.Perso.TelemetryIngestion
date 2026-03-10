@@ -1,0 +1,31 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - iac/service.diagnostic/**
+
+pool:
+  vmImage: "ubuntu-22.04"
+
+variables:
+  - group: tispoc
+  - name: location
+    value: "France Central"
+  - name: deploymentName
+    value: "ci-diagnostic-$(Build.BuildId)"
+
+stages:
+  - stage: BuildInfrastructure
+    displayName: "Build infrastructure"
+    jobs:
+      - template: ../../../cicd/jobs/build-infra.job.yml
+        parameters:
+          jobName: "diagnostic"
+          deploymentName: $(deploymentName)
+          subscriptionId: $(subscriptionId)
+          resourceGroupName: $(resourceGroupName)
+          location: $(location)
+          bicepFilePath: "iac/service.diagnostic/main.bicep"
+          azureSubscription: $(armServiceConnectionName)

@@ -30,10 +30,7 @@ func NewAspireApp(ctx context.Context) (AppManager, error) {
 	tCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	log, err := logger.NewOtelLogger(
-		tCtx,
-		attribute.String("service.layer", "bronze-layer"),
-	)
+	log, err := logger.NewOtelLogger(tCtx, attribute.String("service.layer", "bronze-layer"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize open telemetry logger: %w", err)
 	}
@@ -102,17 +99,12 @@ func (a *AspireApp) initializeOrchestrator() error {
 		return fmt.Errorf("failed to initialize event hub subscriber: %w", err)
 	}
 
-	o := processor.NewProcessor(a.cfg.processor, a.logger, s,
-		func(i int) processor.Worker {
-			return bronze.NewWorker(i, a.logger,
-				[]processor.VersionAdapter{
-					processor.NewHandlerAdapter(pkg.V2, a.cfg.eventhubSubscriber.BatchSize, bronze.NewV2Handler(a.logger, p)),
-					processor.NewHandlerAdapter(pkg.V1, a.cfg.eventhubSubscriber.BatchSize, bronze.NewV1Handler(a.logger, p)),
-				},
-				processor.NewHandlerAdapter(pkg.Legacy, a.cfg.eventhubSubscriber.BatchSize, bronze.NewLegacyHandler(a.logger, p)),
-			)
-		},
-	)
+	o := processor.NewProcessor(a.cfg.processor, a.logger, s, func(i int) processor.Worker {
+		return bronze.NewWorker(i, a.logger, []processor.VersionAdapter{
+			processor.NewHandlerAdapter(pkg.V2, a.cfg.eventhubSubscriber.BatchSize, bronze.NewV2Handler(a.logger, p)),
+			processor.NewHandlerAdapter(pkg.V1, a.cfg.eventhubSubscriber.BatchSize, bronze.NewV1Handler(a.logger, p)),
+		}, processor.NewHandlerAdapter(pkg.Legacy, a.cfg.eventhubSubscriber.BatchSize, bronze.NewLegacyHandler(a.logger, p)))
+	})
 
 	a.orchestrator = o
 	return nil

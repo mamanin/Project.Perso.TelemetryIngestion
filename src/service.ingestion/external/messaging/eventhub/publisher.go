@@ -6,7 +6,13 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
+	"service.ingestion/external/credential"
 )
+
+// PublisherConfig holds configuration for the Event Hub publisher.
+type PublisherConfig struct {
+	Name string `env:"Name,required"`
+}
 
 // Publisher implements the messaging.Publisher interface for Azure Event Hub.
 type Publisher struct {
@@ -14,8 +20,15 @@ type Publisher struct {
 }
 
 // NewPublisher creates a new Event Hub publisher.
-func NewPublisher(_ Config) (*Publisher, error) {
-	panic("not implemented")
+func NewPublisher(cfg Config, cred credential.AzureCredentials) (*Publisher, error) {
+	client, err := azeventhubs.NewProducerClient(cfg.FullyQualifiedNamespace, cfg.Publisher.Name, cred, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create event hub producer client: %w", err)
+	}
+
+	return &Publisher{
+		client: client,
+	}, nil
 }
 
 // NewPublisherForAspire creates a new Event Hub publisher for Aspire configuration.

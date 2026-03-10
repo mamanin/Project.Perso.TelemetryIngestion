@@ -73,5 +73,6 @@ func (w *Worker) processBatch(ctx context.Context, batch messaging.RawEventBatch
 		w.legacyAdapter.Handle(ctx)
 	})
 
+	w.wg.Wait()
 	w.logger.Info("W%d|%.2fμs|%de", w.id, float64(time.Since(start).Microseconds()), len(batch))
 }

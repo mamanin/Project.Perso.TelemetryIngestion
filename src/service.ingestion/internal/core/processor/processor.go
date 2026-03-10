@@ -17,7 +17,7 @@ type Processor struct {
 // Config holds the configuration for the Processor.
 type Config struct {
 	// Workers defines the number of concurrent workers to process messages.
-	Workers int
+	Workers int `env:"Workers,required"`
 }
 
 // NewProcessor creates a new Processor.

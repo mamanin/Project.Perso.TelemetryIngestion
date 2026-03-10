@@ -81,8 +81,9 @@ func (lp *LivenessProbe) performHealthCheck(s []metrics.Sample) {
 
 	for _, sample := range s {
 		if sample.Value.Uint64() > lp.metrics[sample.Name] {
-			lp.logger.Warn("Health check failed: metric %s value %d exceeds threshold %d", sample.Name, sample.Value.Uint64(), lp.metrics[sample.Name])
-			//lp.SetFailed() // TODO: activate when thresholds are configured
+			// TODO: activate when thresholds are configured
+			//lp.logger.Warn("Health check failed: metric %s value %d exceeds threshold %d", sample.Name, sample.Value.Uint64(), lp.metrics[sample.Name])
+			//lp.SetFailed()
 			return
 		}
 	}

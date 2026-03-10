@@ -1,0 +1,32 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/service.ingestion/**
+
+pool:
+  vmImage: "ubuntu-22.04"
+
+variables:
+  - name: goVersion
+    value: "1.26.0"
+  - name: servicePath
+    value: "src/service.ingestion"
+
+stages:
+  - stage: BuildIngestionService
+    displayName: "Build and test ingestion service"
+    jobs:
+      - template: ../../../cicd/jobs/build-app.job.yml
+        parameters:
+          goVersion: $(goVersion)
+          servicePath: $(servicePath)
+          cmds:
+            - name: "bronze-layer"
+              path: "cmd/bronze-worker"
+            - name: "silver-layer"
+              path: "cmd/silver-worker"
+            - name: "gold-layer"
+              path: "cmd/gold-worker"

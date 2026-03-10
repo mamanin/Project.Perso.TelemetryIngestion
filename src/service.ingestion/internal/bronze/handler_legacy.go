@@ -28,8 +28,8 @@ func NewLegacyHandler(logger logger.Logger, publisher messaging.Publisher) proce
 // Handle processes a batch of pkg.TelemetryLegacyEvent items.
 func (h *LegacyHandler) Handle(ctx context.Context, batch []*pkg.TelemetryLegacyEvent) {
 	var events [][]byte
-
 	var me core.MetricEvent
+
 	for _, event := range batch {
 		me = core.MetricEvent{
 			SensorPath: core.FormatSensorPath(event.DeviceId, core.Device),

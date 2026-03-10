@@ -2,17 +2,9 @@
 
 // Config holds configuration for the Event Hub.
 type Config struct {
-	// TODO
-}
-
-// SubscriberConfig holds configuration for the Event Hub subscriber.
-type SubscriberConfig struct {
-	Config
-
-	// BatchSize defines the number of messages to receive in each batch.
-	BatchSize int
-	// PrefetchSize defines the number of messages to prefetch.
-	PrefetchSize int32
+	FullyQualifiedNamespace string           `env:"FullyQualifiedNamespace,required"`
+	Subscriber              SubscriberConfig `envPrefix:"Subscriber__"`
+	Publisher               PublisherConfig  `envPrefix:"Publisher__"`
 }
 
 // AspireConfig holds configuration for connecting to an Aspire Event Hub instance.
@@ -25,8 +17,6 @@ type AspireConfig struct {
 type AspireSubscriberConfig struct {
 	AspireConfig
 
-	// BatchSize defines the number of messages to receive in each batch.
-	BatchSize int
-	// PrefetchSize defines the number of messages to prefetch.
+	BatchSize    int
 	PrefetchSize int32
 }

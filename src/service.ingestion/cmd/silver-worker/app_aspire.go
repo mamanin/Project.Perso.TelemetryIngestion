@@ -49,7 +49,9 @@ func NewAspireApp(ctx context.Context) (AppManager, error) {
 		logger: log,
 	}
 
-	app.initializeRedis()
+	if err = app.initializeRedis(); err != nil {
+		return nil, fmt.Errorf("failed to initialize redis client: %w", err)
+	}
 
 	if err = app.initializeOrchestrator(); err != nil {
 		return nil, fmt.Errorf("failed to initialize processor: %w", err)
@@ -102,6 +104,18 @@ func (a *AspireApp) Stop(ctx context.Context) {
 	a.logger.Info("Silver worker shutdown complete")
 }
 
+// initializeRedis sets up the redis cache.
+func (a *AspireApp) initializeRedis() error {
+	r, err := redis.NewRedisForAspire(a.cfg.redis)
+
+	if err != nil {
+		return fmt.Errorf("failed to initialize redis client: %w", err)
+	}
+
+	a.redis = r
+	return nil
+}
+
 // initializeOrchestrator sets up the orchestrator with its dependencies.
 func (a *AspireApp) initializeOrchestrator() error {
 	p, s, err := a.initializeMessaging()
@@ -140,13 +154,6 @@ func (a *AspireApp) initializeMessaging() (*eventhub.Publisher, *eventhub.Subscr
 
 	a.subscriber = s
 	return p, s, nil
-}
-
-// initializeRedis sets up the redis cache.
-func (a *AspireApp) initializeRedis() {
-	r := redis.NewRedisForAspire(a.cfg.redis)
-
-	a.redis = r
 }
 
 // initializeProbesManager sets up the health check manager.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"service.ingestion/external/credential"
 	"service.ingestion/external/messaging/eventhub"
 	"service.ingestion/external/storage/adx"
 	"service.ingestion/external/storage/container"
@@ -27,6 +28,7 @@ type App struct {
 	cfg *Config
 
 	logger        logger.Logger
+	cred          credential.AzureCredentials
 	orchestrator  *processor.Processor
 	adx           *adx.Client[core.DataMetric]
 	subscriber    *eventhub.Subscriber
@@ -54,6 +56,10 @@ func NewApp(ctx context.Context) (AppManager, error) {
 	app := &App{
 		cfg:    cfg,
 		logger: log,
+	}
+
+	if err = app.initializeCredentials(); err != nil {
+		return nil, fmt.Errorf("failed to initialize credentials: %w", err)
 	}
 
 	if err = app.initializeAdx(); err != nil {
@@ -110,6 +116,17 @@ func (a *App) Stop(ctx context.Context) {
 	a.logger.Info("Gold worker shutdown complete")
 }
 
+// initializeCredentials retrieves Azure credentials for the application.
+func (a *App) initializeCredentials() error {
+	cred, err := credential.NewAzureDefault()
+	if err != nil {
+		return fmt.Errorf("failed to get azure credentials: %w", err)
+	}
+
+	a.cred = cred
+	return nil
+}
+
 func (a *App) initializeAdx() error {
 	c, err := adx.NewClient[core.DataMetric](adx.Config{}, a.logger)
 	if err != nil {
@@ -146,12 +163,12 @@ func (a *App) initializeOrchestrator() error {
 
 // initializeMessaging sets up the messaging services.
 func (a *App) initializeMessaging() (*eventhub.Subscriber, error) {
-	cp, err := container.NewCheckpoint(container.Config{})
+	cp, err := container.NewCheckpoint(container.Config{}, a.cred)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create checkpoint store: %w", err)
 	}
 
-	s, err := eventhub.NewSubscriber(a.logger, eventhub.SubscriberConfig{}, cp)
+	s, err := eventhub.NewSubscriber(a.logger, eventhub.Config{}, a.cred, cp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}

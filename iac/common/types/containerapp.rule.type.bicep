@@ -1,6 +1,10 @@
 @description('Container App Rule Type')
 @export()
 type ContainerAppScaleRule = {
+  @description('Name of the scaling rule')
+  name: string
+
+  @description('Type of the scaling rule')
   custom: ContainerAppCustomRuleType
 }
 

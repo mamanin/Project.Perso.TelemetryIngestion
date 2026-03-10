@@ -21,8 +21,8 @@ type VersionAdapter interface {
 // HandlerAdapter implements VersionAdapter for a specific item type T.
 type HandlerAdapter[T any] struct {
 	version string
-
 	items   []*T
+
 	handler Handler[T]
 }
 
@@ -35,8 +35,8 @@ func NewHandlerAdapter[T any](version string, batchSize int, handler Handler[T])
 
 	return &HandlerAdapter[T]{
 		version: version,
-
 		items:   make([]*T, 0, batchSize),
+
 		handler: handler,
 	}
 }
@@ -56,8 +56,11 @@ func (h *HandlerAdapter[T]) RegisterItem(data []byte) {
 
 // Handle processes the collected batch of items.
 func (h *HandlerAdapter[T]) Handle(ctx context.Context) {
+	defer func() {
+		h.items = h.items[:0]
+	}()
+
 	if len(h.items) > 0 {
 		h.handler.Handle(ctx, h.items)
-		h.items = h.items[:0]
 	}
 }

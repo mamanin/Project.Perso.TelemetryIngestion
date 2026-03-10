@@ -1,17 +1,21 @@
 // =======================================================================
-// Silver Injestion Service Deployment
+// Gold Injestion Service Deployment
 // -----------------------------------------------------------------------
-// Module: deploy-silver.bicep
+// Module: gold.bicep
 // Description: Deploys the infrastructure resources required for the
-//       silver layer of the telemetry ingestion service.
+//       gold layer of the telemetry ingestion service.
 // =======================================================================
 
-import { rbacRoles } from './constants/rbac.role.constants.bicep'
-import { BuildResourceName } from 'functions/core.functions.bicep'
+import { rbacRoles } from '../common/constants/rbac.role.constants.bicep'
+import { BuildResourceName } from '../common/functions/core.functions.bicep'
+import { ingestionConstants } from './constants/ingestion.constants.bicep'
 
 // -----------------------------------------------------------------------
 // Parameters and Variables
 // -----------------------------------------------------------------------
+
+@description('The version of the application to deploy')
+param version string
 
 @description('The name of the resource group to deploy to')
 var location = resourceGroup().location
@@ -23,11 +27,9 @@ var prefix = 'tispoc'
 var tags = {
   project: prefix
   'managed-by': 'bicep'
-  application: 'silver'
+  service: 'ingestion'
+  application: 'gold'
 }
-
-@description('The version of the application to deploy')
-param version string
 
 // -----------------------------------------------------------------------
 // Existing Resources
@@ -49,110 +51,51 @@ resource namespace 'Microsoft.EventHub/namespaces@2025-05-01-preview' existing =
   name: BuildResourceName(prefix, 'evh', '001')
 }
 
-resource redis 'Microsoft.Cache/redis@2024-11-01' existing = {
-  name: BuildResourceName(prefix, 'red', '001')
+resource kustoCluster 'Microsoft.Kusto/clusters@2024-04-13' existing = {
+  name: BuildResourceName(prefix, 'adx', '001')
 }
 
 // -----------------------------------------------------------------------
 // Service Core
 // -----------------------------------------------------------------------
 
-module identity './modules/identity.userassigned.module.bicep' = {
+module identity '../common/modules/identity.userassigned.module.bicep' = {
   name: 'identityDeploy'
   params: {
     prefix: prefix
-    number: '002'
+    number: '003'
     location: location
     tags: tags
   }
 }
 
-module containerRegistryRoleAssignment './modules/rbac/rbac.containerregistry.module.bicep' = {
-  name: 'containerRegistryRoleAssignmentDeploy'
-  params: {
-    name: containerRegistry.name
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.containerregistry['Acr Pull']
-    ]
-  }
-}
-
-module storageAccountRoleAssignment './modules/rbac/rbac.storageaccount.module.bicep' = {
-  name: 'storageAccountRoleAssignmentDeploy'
-  params: {
-    name: storageAccount.name
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.storageaccount['Storage Blob Data Contributor']
-    ]
-  }
-}
-
-module metricsEventHubRoleAssignment './modules/rbac/rbac.eventhub.module.bicep' = {
-  name: 'metricsEventHubRoleAssignmentDeploy'
-  params: {
-    namespaceName: namespace.name
-    name: 'telemetry-metrics'
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.eventhub['Azure Event Hubs Data Receiver']
-    ]
-  }
-}
-
-module dataEventHubRoleAssignment './modules/rbac/rbac.eventhub.module.bicep' = {
-  name: 'dataEventHubRoleAssignmentDeploy'
-  params: {
-    namespaceName: namespace.name
-    name: 'telemetry-data'
-    principalId: identity.outputs.principalId
-    roles: [
-      rbacRoles.eventhub['Azure Event Hubs Data Sender']
-    ]
-  }
-}
-
-module redisRoleAssignment './modules/rbac/rbac.redis.module.bicep' = {
-  name: 'redisRoleAssignmentDeploy'
-  params: {
-    name: redis.name
-    principalId: identity.outputs.principalId
-    policyNames: [
-      'telemetry-ingestion-silver-layer-policy'
-    ]
-  }
-}
-
-// TODO: check for :
-// - add GOMAXPROCS '1' to env
-// - add import _ "go.uber.org/automaxprocs" to go app
-module containerApp './modules/containerapp.module.bicep' = {
+module containerApp '../common/modules/containerapp.module.bicep' = {
   name: 'containerAppDeploy'
   params: {
     prefix: prefix
-    number: '001'
+    number: '003'
     location: location
     tags: tags
     managedIdentityId: identity.outputs.id
     containerAppEnvironmentId: containerAppEnvironment.id
     containerServer: containerRegistry.properties.loginServer
-    containerImage: '/wildgrowth/silver:${version}'
+    containerImage: '/service.ingestion/gold:${version}'
     applicationPort: 8080
     minReplicas: 0
-    maxReplicas: 6 // TODO: use variable
+    maxReplicas: ingestionConstants.gold.partitionCount
     scaleRules: [{
+      name: 'eventhub-scaler'
       custom: {
         type: 'azure-eventhub'
         identity: identity.outputs.id
         metadata: {
             eventHubNamespace: namespace.name
-            eventHubName: 'telemetry-metrics'
+            eventHubName: 'telemetry-data'
             storageAccountName: storageAccount.name
             blobContainer: 'partition-checkpoints'
-            checkpointStrategy: 'goSdk' // TODO: blobMetadata ?
-            unprocessedEventThreshold: '400' // TODO: use variable: batch size * x (2?)
-            activationUnprocessedEventThreshold: '200' // TODO: use variable: batch size * x (1?)
+            checkpointStrategy: 'blobMetadata'
+            unprocessedEventThreshold: string(ingestionConstants.gold.scalingEventThreshold)
+            activationUnprocessedEventThreshold: string(ingestionConstants.gold.scalingActivationEventThreshold)
         }
       }
     }]
@@ -182,7 +125,7 @@ module containerApp './modules/containerapp.module.bicep' = {
       }
       {
         name: 'OTEL_SERVICE_NAME'
-        value: 'silver-layer'
+        value: 'gold-layer'
       }
       {
         name: 'OTEL_SERVICE_VERSION'
@@ -213,6 +156,52 @@ module containerApp './modules/containerapp.module.bicep' = {
         periodSeconds: 3
         initialDelaySeconds: 5
       }
+    ]
+  }
+}
+
+module containerRegistryRoleAssignment '../common/modules/rbac/rbac.containerregistry.module.bicep' = {
+  name: 'containerRegistryRoleAssignmentDeploy'
+  params: {
+    name: containerRegistry.name
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.containerregistry['Acr Pull']
+    ]
+  }
+}
+
+module storageAccountRoleAssignment '../common/modules/rbac/rbac.storageaccount.module.bicep' = {
+  name: 'storageAccountRoleAssignmentDeploy'
+  params: {
+    name: storageAccount.name
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.storageaccount['Storage Blob Data Contributor']
+    ]
+  }
+}
+
+module dataEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.bicep' = {
+  name: 'dataEventHubRoleAssignmentDeploy'
+  params: {
+    namespaceName: namespace.name
+    name: 'telemetry-data'
+    principalId: identity.outputs.principalId
+    roles: [
+      rbacRoles.eventhub['Azure Event Hubs Data Receiver']
+    ]
+  }
+}
+
+module kustoClusterDatabaseRoleAssignment '../common/modules/rbac/rbac.kusto.database.module.bicep' = {
+  name: 'kustoClusterDatabaseRoleAssignmentDeploy'
+  params: {
+    kustoClusterName: kustoCluster.name
+    databaseName: 'telemetries'
+    principalId: identity.outputs.principalId
+    roles: [
+      'Ingestor'
     ]
   }
 }

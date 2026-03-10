@@ -1,0 +1,26 @@
+trigger: none
+
+pool:
+  vmImage: "ubuntu-22.04"
+
+variables:
+  - group: tispoc
+  - name: location
+    value: "France Central"
+  - name: bicepFilePath
+    value: "iac/service.diagnostic/main.bicep"
+  - name: deploymentName
+    value: "release-diagnostic-$(Build.BuildId)"
+
+stages:
+  - stage: DeployInfrastructure
+    displayName: "Deploy infrastructure"
+    jobs:
+      - template: ../../../cicd/jobs/deploy-infra.job.yml
+        parameters:
+          deploymentName: $(deploymentName)
+          subscriptionId: $(subscriptionId)
+          resourceGroupName: $(resourceGroupName)
+          location: $(location)
+          bicepFilePath: $(bicepFilePath)
+          azureSubscription: $(armServiceConnectionName)

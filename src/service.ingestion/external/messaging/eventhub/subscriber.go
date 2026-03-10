@@ -7,10 +7,18 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
+	"service.ingestion/external/credential"
 	"service.ingestion/external/messaging"
 	"service.ingestion/external/storage/container"
 	"service.ingestion/internal/core/observability/logger"
 )
+
+// SubscriberConfig holds configuration for the Event Hub subscriber.
+type SubscriberConfig struct {
+	Name         string `env:"Name,required"`
+	BatchSize    int    `env:"BatchSize,required"`
+	PrefetchSize int32  `env:"PrefetchSize,required"`
+}
 
 // Subscriber implements the messaging.Subscriber interface for Azure Event Hub.
 type Subscriber struct {
@@ -37,8 +45,30 @@ type SubscriberOption struct {
 }
 
 // NewSubscriber creates a new Event Hub subscriber.
-func NewSubscriber(_ logger.Logger, _ SubscriberConfig, _ *container.Checkpoint) (*Subscriber, error) {
-	panic("not implemented")
+func NewSubscriber(logger logger.Logger, cfg Config, cred credential.AzureCredentials, cp *container.Checkpoint) (*Subscriber, error) {
+	client, err := azeventhubs.NewConsumerClient(cfg.FullyQualifiedNamespace, cfg.Subscriber.Name, azeventhubs.DefaultConsumerGroup, cred, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create consumer client: %w", err)
+	}
+
+	processor, err := azeventhubs.NewProcessor(client, cp, &azeventhubs.ProcessorOptions{Prefetch: cfg.Subscriber.PrefetchSize})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create processor: %w", err)
+	}
+
+	return &Subscriber{
+		logger:    logger,
+		client:    client,
+		processor: processor,
+
+		options: SubscriberOption{
+			batchSize:    cfg.Subscriber.BatchSize,
+			prefetchSize: cfg.Subscriber.PrefetchSize,
+		},
+
+		stopChan: make(chan struct{}),
+		doneChan: make(chan struct{}),
+	}, nil
 }
 
 // NewSubscriberForAspire creates a new Event Hub subscriber for Aspire configuration.
@@ -86,7 +116,10 @@ func (s *Subscriber) Subscribe(ctx context.Context, queue chan messaging.RawEven
 			case <-s.stopChan:
 				return
 			default:
-				pc := s.processor.NextPartitionClient(ctx)
+				reCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+				pc := s.processor.NextPartitionClient(reCtx)
+				cancel()
+
 				if pc == nil {
 					s.logger.Debug("No partition client found for subscription")
 					time.Sleep(1 * time.Second)
@@ -156,6 +189,8 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 				eventPool[i] = event.Body
 			}
 
+			s.logger.Info("R|%.2fμs|%de", float64(time.Since(start).Microseconds()), len(events))
+
 			select {
 			case <-ctx.Done():
 				return
@@ -166,8 +201,6 @@ func (s *Subscriber) receiveEvents(ctx context.Context, pc *azeventhubs.Processo
 				s.latest = events[len(events)-1]
 				s.mu.Unlock()
 			}
-
-			s.logger.Info("R|%.2fμs|%de", float64(time.Since(start).Microseconds()), len(events))
 		}
 	}
 }
