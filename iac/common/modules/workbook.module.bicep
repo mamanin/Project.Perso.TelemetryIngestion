@@ -36,6 +36,8 @@ var resourceTypeToPrefix = {
   WebPlan: 'WEB_PLAN'
   ServiceBus: 'SERVICE_BUS'
   CosmosDb: 'COSMOS_DB'
+  RedisCluster: 'REDIS_CLUSTER'
+  Adx: 'ADX'
 }
 
 @description('List of placeholders and their corresponding resource IDs to replace in the workbook template')

@@ -681,6 +681,98 @@
             },
             "customWidth": "50",
             "name": "silver-group-container-metrics"
+          },
+          {
+            "type": 12,
+            "content": {
+              "version": "NotebookGroup/1.0",
+              "groupType": "editable",
+              "items": [
+                {
+                  "type": 10,
+                  "content": {
+                    "chartId": "workbookf1a2b345-6c78-4d90-ef01-234567890abc",
+                    "version": "MetricsItem/2.0",
+                    "size": 1,
+                    "chartType": 2,
+                    "resourceType": "microsoft.cache/redisenterprise",
+                    "metricScope": 0,
+                    "resourceIds": [
+                      "{{REDIS_CLUSTER_INGESTION}}"
+                    ],
+                    "timeContextFromParameter": "TimeRange",
+                    "timeContext": {
+                      "durationMs": 1800000
+                    },
+                    "metrics": [
+                      {
+                        "namespace": "microsoft.cache/redisenterprise",
+                        "metric": "microsoft.cache/redisenterprise--percentProcessorTime",
+                        "aggregation": 4
+                      },
+                      {
+                        "namespace": "microsoft.cache/redisenterprise",
+                        "metric": "microsoft.cache/redisenterprise--percentProcessorTime",
+                        "aggregation": 3
+                      },
+                      {
+                        "namespace": "microsoft.cache/redisenterprise",
+                        "metric": "microsoft.cache/redisenterprise--usedmemorypercentage",
+                        "aggregation": 4
+                      },
+                      {
+                        "namespace": "microsoft.cache/redisenterprise",
+                        "metric": "microsoft.cache/redisenterprise--usedmemorypercentage",
+                        "aggregation": 3
+                      }
+                    ],
+                    "title": "Redis - CPU & Used Memory (%)",
+                    "gridSettings": {
+                      "rowLimit": 10000
+                    }
+                  },
+                  "customWidth": "50",
+                  "name": "silver-group-redis-cpu-memory"
+                },
+                {
+                  "type": 10,
+                  "content": {
+                    "chartId": "workbookg2b3c456-7d89-5e01-f012-345678901bcd",
+                    "version": "MetricsItem/2.0",
+                    "size": 1,
+                    "chartType": 2,
+                    "resourceType": "microsoft.cache/redisenterprise",
+                    "metricScope": 0,
+                    "resourceIds": [
+                      "{{REDIS_CLUSTER_INGESTION}}"
+                    ],
+                    "timeContextFromParameter": "TimeRange",
+                    "timeContext": {
+                      "durationMs": 1800000
+                    },
+                    "metrics": [
+                      {
+                        "namespace": "microsoft.cache/redisenterprise",
+                        "metric": "microsoft.cache/redisenterprise--cachehits",
+                        "aggregation": 1
+                      },
+                      {
+                        "namespace": "microsoft.cache/redisenterprise",
+                        "metric": "microsoft.cache/redisenterprise--cachemisses",
+                        "aggregation": 3
+                      }
+                    ],
+                    "title": "Redis - Cache Hits & Misses",
+                    "gridSettings": {
+                      "rowLimit": 10000
+                    }
+                  },
+                  "customWidth": "50",
+                  "name": "silver-group-redis-cache-stats"
+                }
+              ]
+            },
+            "name": "silver-group-redis-cache"
           }
         ]
       },
@@ -971,6 +1063,52 @@
             },
             "customWidth": "50",
             "name": "gold-group-container-metrics"
+          },
+          {
+            "type": 10,
+            "content": {
+              "chartId": "workbooki4d5e678-9f01-6a12-h123-567890123def",
+              "version": "MetricsItem/2.0",
+              "size": 1,
+              "chartType": 2,
+              "resourceType": "microsoft.kusto/clusters",
+              "metricScope": 0,
+              "resourceIds": [
+                "{{ADX_INGESTION}}"
+              ],
+              "timeContextFromParameter": "TimeRange",
+              "timeContext": {
+                "durationMs": 1800000
+              },
+              "metrics": [
+                {
+                  "namespace": "microsoft.kusto/clusters",
+                  "metric": "microsoft.kusto/clusters--CPU",
+                  "aggregation": 3
+                },
+                {
+                  "namespace": "microsoft.kusto/clusters",
+                  "metric": "microsoft.kusto/clusters--CPU",
+                  "aggregation": 4
+                },
+                {
+                  "namespace": "microsoft.kusto/clusters",
+                  "metric": "microsoft.kusto/clusters--CacheUtilizationFactor",
+                  "aggregation": 3
+                },
+                {
+                  "namespace": "microsoft.kusto/clusters",
+                  "metric": "microsoft.kusto/clusters--CacheUtilizationFactor",
+                  "aggregation": 4
+                }
+              ],
+              "title": "ADX - CPU & Cache Utilization Factor (%)",
+              "gridSettings": {
+                "rowLimit": 10000
+              }
+            },
+            "customWidth": "50",
+            "name": "gold-group-adx-cpu-cache"
           }
         ]
       },

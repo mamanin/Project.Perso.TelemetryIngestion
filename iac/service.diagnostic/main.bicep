@@ -41,6 +41,14 @@ resource bronzeContainerApp 'Microsoft.App/containerApps@2025-10-02-preview' exi
   name: BuildResourceName(prefix, 'aca', '001')
 }
 
+resource redis 'Microsoft.Cache/redisEnterprise@2025-08-01-preview' existing = {
+  name: BuildResourceName(prefix, 'red', '001')
+}
+
+resource kustoCluster 'Microsoft.Kusto/clusters@2024-04-13' existing = {
+  name: BuildResourceName(prefix, 'adx', '001')
+}
+
 resource silverContainerApp 'Microsoft.App/containerApps@2025-10-02-preview' existing = {
   name: BuildResourceName(prefix, 'aca', '002')
 }
@@ -85,6 +93,16 @@ module ingestionWorkbook '../common/modules/workbook.module.bicep' = {
         typeTemplate: 'ContainerApp'
         key: 'ingestion-gold'
         id: goldContainerApp.id
+      }
+      {
+        typeTemplate: 'RedisCluster'
+        key: 'ingestion'
+        id: redis.id
+      }
+      {
+        typeTemplate: 'Adx'
+        key: 'ingestion'
+        id: kustoCluster.id
       }
     ]
   }
