@@ -56,6 +56,3 @@ output kustoClusterName string = cluster.name
 
 @description('The Kusto Cluster resource ID')
 output kustoClusterId string = cluster.id
-
-@description('The Kusto Cluster URI')
-output kustoClusterUri string = cluster.properties.uri

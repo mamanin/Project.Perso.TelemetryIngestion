@@ -1,5 +1,3 @@
-.execute database script <|
-
 // Create 10-minute aggregated metrics view
 //  - Retention set to 30 days
 //  - Hot caching for 7 days

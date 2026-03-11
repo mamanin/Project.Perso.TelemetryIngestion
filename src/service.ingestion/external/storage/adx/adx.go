@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/azure-kusto-go/kusto"
 	"github.com/Azure/azure-kusto-go/kusto/ingest"
 	"github.com/mailru/easyjson"
+	"service.ingestion/external/credential"
 	"service.ingestion/internal/core/observability/logger"
 )
 
@@ -20,26 +21,43 @@ type Client[T easyjson.Marshaler] struct {
 
 // Config holds configuration for the Azure Data Explorer client.
 type Config struct {
-	// TODO
+	Endpoint string `env:"Endpoint,required"`
+	Database string `env:"Database,required"`
+	Table    string `env:"Table,required"`
 }
 
 // AspireConfig holds configuration for the Aspire Azure Data Explorer client.
 type AspireConfig struct {
-	Endpoint string
-	Database string
-	Table    string
+	ConnectionString string
+	Database         string
+	Table            string
 }
 
 // NewClient creates a new adx.Client based on the provided configuration.
-func NewClient[T easyjson.Marshaler](_ Config, _ logger.Logger) (*Client[T], error) {
-	// kusto_conn_string.WithDefaultAzureCredential()
-	// ingestor, err = ingest.New(client, cfg.Database, cfg.Table)
-	panic("not implemented")
+func NewClient[T easyjson.Marshaler](cfg Config, logger logger.Logger, cred credential.AzureCredentials) (*Client[T], error) {
+	client, err := kusto.New(kusto.NewConnectionStringBuilder(cfg.Endpoint).WithTokenCredential(cred))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kusto client: %w", err)
+	}
+
+	ingestor, err := ingest.New(client, cfg.Database, cfg.Table)
+	if err != nil {
+		if err = client.Close(); err != nil {
+			return nil, fmt.Errorf("failed to close kusto client after ingestor creation failure: %w", err)
+		}
+		return nil, fmt.Errorf("failed to create ingestor: %w", err)
+	}
+
+	return &Client[T]{
+		client:   client,
+		ingestor: ingestor,
+		logger:   logger,
+	}, nil
 }
 
 // NewClientForAspire creates a new adx.Client for Aspire based on the provided configuration.
 func NewClientForAspire[T easyjson.Marshaler](cfg AspireConfig, logger logger.Logger) (*Client[T], error) {
-	client, err := kusto.New(kusto.NewConnectionStringBuilder(cfg.Endpoint))
+	client, err := kusto.New(kusto.NewConnectionStringBuilder(cfg.ConnectionString))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kusto client: %w", err)
 	}

@@ -141,7 +141,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
             eventHubNamespace: namespace.name
             eventHubName: ingestionConstants.eventhub.rawName
             storageAccountName: storageAccount.name
-            blobContainer: 'partition-checkpoints'
+            blobContainer: ingestionConstants.tableStorage.checkpointsTableName
             checkpointStrategy: 'blobMetadata'
             unprocessedEventThreshold: string(ingestionConstants.bronze.scalingEventThreshold)
             activationUnprocessedEventThreshold: string(ingestionConstants.bronze.scalingActivationEventThreshold)
@@ -165,7 +165,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       }
       {
         name: 'Container__Url'
-        value: '${storageAccount.properties.primaryEndpoints.blob}partition-checkpoints'
+        value: '${storageAccount.properties.primaryEndpoints.blob}${ingestionConstants.tableStorage.checkpointsTableName}'
       }
       {
         name: 'EventHub__FullyQualifiedNamespace'

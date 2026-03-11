@@ -6,6 +6,13 @@ var ingestionConstants = {
     metricsName: 'telemetry-metrics'
     dataName: 'telemetry-data'
   }
+  dataExplorer: {
+    telemetryDatabaseName: 'telemetries'
+    telemetryTableName: 'metrics'
+  }
+  tableStorage: {
+    checkpointsTableName: 'partition-checkpoints'
+  }
   bronze: {
     partitionCount: 4
     processingBatchSize: 100

@@ -13,15 +13,6 @@ import { ingestionConstants } from './constants/ingestion.constants.bicep'
 // Parameters and Variables
 // -----------------------------------------------------------------------
 
-@description('Whether to deploy the Bronze layer resources.')
-param deployBronze string = ''
-
-@description('Whether to deploy the Silver layer resources.')
-param deploySilver string = ''
-
-@description('Whether to deploy the Gold layer resources.')
-param deployGold string = ''
-
 @description('The name of the resource group to deploy to')
 var location = resourceGroup().location
 
@@ -33,13 +24,6 @@ var tags = {
   project: prefix
   'managed-by': 'bicep'
   service: 'ingestion'
-}
-
-@description('Object to control layer deployments based on parameters')
-var layerDeployment = {
-  bronze: deployBronze == 'True' ? true : false
-  silver: deploySilver == 'True' ? true : false
-  gold: deployGold == 'True' ? true : false
 }
 
 // -----------------------------------------------------------------------
@@ -112,14 +96,14 @@ module storageAccountBlobs '../common/modules/storageaccount.containers.module.b
     storageAccountName: storageAccount.outputs.name
     containers: [
       {
-        name: 'partition-checkpoints'
+        name: ingestionConstants.tableStorage.checkpointsTableName
         publicAccess: 'None'
       }
     ]
   }
 }
 
-module redisCache '../common/modules/redis.module.bicep' = if (layerDeployment.silver) {
+module redisCache '../common/modules/redis.module.bicep' = {
   name: 'redisCacheDeploy'
   params: {
     prefix: prefix
@@ -130,58 +114,58 @@ module redisCache '../common/modules/redis.module.bicep' = if (layerDeployment.s
   }
 }
 
-module redisDatabase '../common/modules/redis.database.module.bicep' = if (layerDeployment.silver) {
+module redisDatabase '../common/modules/redis.database.module.bicep' = {
   name: 'redisDatabaseDeploy'
   params: {
-    redisName: redisCache!.outputs.name
+    redisName: redisCache.outputs.name
     enableAccessKeyAuth: false
   }
 }
 
-module kustoCluster '../common/modules/kusto.cluster.module.bicep' = if (layerDeployment.gold) {
+module kustoCluster '../common/modules/kusto.cluster.module.bicep' = {
   name: 'kustoClusterDeploy'
   params: {
     prefix: prefix
     location: location
     tags: tags
     sku: {
-      name: 'Dev(No SLA)_Standard_E2a_v4'
-      tier: 'Basic'
-      capacity: 1
+      name: 'Standard_E2ads_v5'
+      tier: 'Standard'
+      capacity: 2
     }
     enableAutoStop: true
   }
 }
 
-module kustoDatabase '../common/modules/kusto.cluster.database.module.bicep' = if (layerDeployment.gold) {
+module kustoDatabase '../common/modules/kusto.cluster.database.module.bicep' = {
   name: 'kustoDatabaseDeploy'
   params: {
-    kustoClusterName: kustoCluster!.outputs.kustoClusterName
-    databaseName: 'telemetries'
+    kustoClusterName: kustoCluster.outputs.kustoClusterName
+    databaseName: ingestionConstants.dataExplorer.telemetryDatabaseName
     scripts: [
       {
         name: 'create-metrics-tables'
-        scriptVersion: 'v1.0.0'
+        scriptVersion: 'v1.0.1'
         script: loadTextContent('scripts/telemetries.tables.metrics.kql')
       }
       {
         name: 'create-devices-status-view'
-        scriptVersion: 'v1.0.0'
+        scriptVersion: 'v1.0.1'
         script: loadTextContent('scripts/telemetries.views.devices.state.kql')
       }
       {
         name: 'create-10-minutes-view'
-        scriptVersion: 'v1.0.0'
+        scriptVersion: 'v1.0.1'
         script: loadTextContent('scripts/telemetries.views.metrics.10m.kql')
       }
       {
         name: 'create-1-hour-view'
-        scriptVersion: 'v1.0.0'
+        scriptVersion: 'v1.0.1'
         script: loadTextContent('scripts/telemetries.views.metrics.1h.kql')
       }
       {
         name: 'create-1-day-view'
-        scriptVersion: 'v1.0.0'
+        scriptVersion: 'v1.0.1'
         script: loadTextContent('scripts/telemetries.views.metrics.1d.kql')
       }
     ]
@@ -205,7 +189,7 @@ module eventHubNamespace '../common/modules/eventhub.namespace.module.bicep' = {
   }
 }
 
-module rawEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.bronze) {
+module rawEventHub '../common/modules/eventhub.module.bicep' = {
   name: 'rawEventHubDeploy'
   params: {
     name: ingestionConstants.eventhub.rawName
@@ -214,7 +198,7 @@ module rawEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployme
   }
 }
 
-module metricsEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.bronze) {
+module metricsEventHub '../common/modules/eventhub.module.bicep' = {
   name: 'metricsEventHubDeploy'
   params: {
     name: ingestionConstants.eventhub.metricsName
@@ -223,7 +207,7 @@ module metricsEventHub '../common/modules/eventhub.module.bicep' = if (layerDepl
   }
 }
 
-module dataEventHub '../common/modules/eventhub.module.bicep' = if (layerDeployment.silver) {
+module dataEventHub '../common/modules/eventhub.module.bicep' = {
   name: 'dataEventHubDeploy'
   params: {
     name: ingestionConstants.eventhub.dataName

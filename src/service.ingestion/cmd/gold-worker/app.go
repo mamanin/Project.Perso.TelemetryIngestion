@@ -124,7 +124,7 @@ func (a *App) initializeCredentials() error {
 }
 
 func (a *App) initializeAdx() error {
-	c, err := adx.NewClient[core.DataMetric](adx.Config{}, a.logger)
+	c, err := adx.NewClient[core.DataMetric](a.cfg.Adx, a.logger, a.cred)
 	if err != nil {
 		return fmt.Errorf("failed to initialize ADX client: %w", err)
 	}
@@ -140,18 +140,9 @@ func (a *App) initializeOrchestrator() error {
 		return fmt.Errorf("failed to initialize event hub subscriber: %w", err)
 	}
 
-	h := gold.NewHandler(a.logger, a.adx)
-
-	o := processor.NewProcessor(
-		processor.Config{
-			Workers: 0,
-		},
-		a.logger,
-		s,
-		func(i int) processor.Worker {
-			return gold.NewWorker(i, 0, a.logger, h)
-		},
-	)
+	o := processor.NewProcessor(a.cfg.Processor, a.logger, s, func(i int) processor.Worker {
+		return gold.NewWorker(i, a.cfg.EventHub.Subscriber.BatchSize, a.logger, gold.NewHandler(a.logger, a.adx))
+	})
 
 	a.orchestrator = o
 	return nil
@@ -159,12 +150,12 @@ func (a *App) initializeOrchestrator() error {
 
 // initializeMessaging sets up the messaging services.
 func (a *App) initializeMessaging() (*eventhub.Subscriber, error) {
-	cp, err := container.NewCheckpoint(container.Config{}, a.cred)
+	cp, err := container.NewCheckpoint(a.cfg.Container, a.cred)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create checkpoint store: %w", err)
 	}
 
-	s, err := eventhub.NewSubscriber(a.logger, eventhub.Config{}, a.cred, cp)
+	s, err := eventhub.NewSubscriber(a.logger, a.cfg.EventHub, a.cred, cp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create event hub subscriber: %w", err)
 	}

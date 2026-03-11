@@ -1,5 +1,3 @@
-.execute database script <|
-
 // Create devices status materialized view
 //  - Soft delete disabled
 //  - Hot caching for 365 days

@@ -20,8 +20,8 @@ const (
 
 	ProcessorWorkerCountKey = "PROCESSOR_WORKERCOUNT"
 
-	AdxEndpointKey = "TELEMETRIES_URI"
-	AdxDatabaseKey = "TELEMETRIES_DATABASENAME"
+	AdxConnectionStringKey = "TELEMETRIES_URI"
+	AdxDatabaseKey         = "TELEMETRIES_DATABASENAME"
 )
 
 // AspireConfig holds the entire configuration for the application.
@@ -57,9 +57,9 @@ func LoadAspireConfig() (*AspireConfig, error) {
 	}
 
 	cfg.adx = adx.AspireConfig{
-		Endpoint: os.Getenv(AdxEndpointKey),
-		Database: os.Getenv(AdxDatabaseKey),
-		Table:    "metrics",
+		ConnectionString: os.Getenv(AdxConnectionStringKey),
+		Database:         os.Getenv(AdxDatabaseKey),
+		Table:            "metrics",
 	}
 
 	return cfg, nil

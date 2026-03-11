@@ -107,8 +107,8 @@ module kustoClusterDatabaseRoleAssignment '../common/modules/rbac/rbac.kusto.dat
   name: 'kustoClusterDatabaseRoleAssignmentDeploy'
   params: {
     kustoClusterName: kustoCluster.name
-    databaseName: 'telemetries'
-    principalId: identity.outputs.principalId
+    databaseName: ingestionConstants.dataExplorer.telemetryDatabaseName
+    principalId: identity.outputs.clientId
     roles: [
       'Ingestor'
     ]
@@ -133,6 +133,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
     containerServer: containerRegistry.properties.loginServer
     containerImage: '/service.ingestion/gold:${version}'
     applicationPort: 8080
+    activeRevisionsMode: 'Single' // Required as partitions can't be shared between revisions
     minReplicas: 0
     maxReplicas: ingestionConstants.gold.partitionCount
     scaleRules: [{
@@ -144,7 +145,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
             eventHubNamespace: namespace.name
             eventHubName: ingestionConstants.eventhub.dataName
             storageAccountName: storageAccount.name
-            blobContainer: 'partition-checkpoints'
+            blobContainer: ingestionConstants.tableStorage.checkpointsTableName
             checkpointStrategy: 'blobMetadata'
             unprocessedEventThreshold: string(ingestionConstants.gold.scalingEventThreshold)
             activationUnprocessedEventThreshold: string(ingestionConstants.gold.scalingActivationEventThreshold)
@@ -161,7 +162,47 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
         value: identity.outputs.clientId
       }
 
-      // TODO: add app settings
+      // App settings
+      {
+        name: 'Processor__Workers'
+        value: string(ingestionConstants.gold.processingWorkerCount)
+      }
+      {
+        name: 'Container__Url'
+        value: '${storageAccount.properties.primaryEndpoints.blob}${ingestionConstants.tableStorage.checkpointsTableName}'
+      }
+      {
+        name: 'EventHub__FullyQualifiedNamespace'
+        value: '${namespace.name}.servicebus.windows.net'
+      }
+      {
+        name: 'EventHub__Subscriber__Name'
+        value: ingestionConstants.eventhub.dataName
+      }
+      {
+        name: 'EventHub__Subscriber__BatchSize'
+        value: string(ingestionConstants.gold.processingBatchSize)
+      }
+      {
+        name: 'EventHub__Subscriber__PrefetchSize'
+        value: string(ingestionConstants.gold.processingBatchSize * (ingestionConstants.gold.processingWorkerCount + ingestionConstants.gold.processingWorkerCount / 2))
+      }
+      {
+        name: 'EventHub__Publisher__Name'
+        value: 'ø' // No publisher in gold
+      }
+      {
+        name: 'Adx__Endpoint'
+        value: kustoCluster.properties.uri
+      }
+      {
+        name: 'Adx__Database'
+        value: ingestionConstants.dataExplorer.telemetryDatabaseName
+      }
+      {
+        name: 'Adx__Table'
+        value: ingestionConstants.dataExplorer.telemetryTableName
+      }
 
       // OpenTelemetry settings
       // OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_PROTOCOL are added automatically by the container environment

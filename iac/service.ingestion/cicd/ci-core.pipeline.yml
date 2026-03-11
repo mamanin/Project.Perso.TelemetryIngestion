@@ -29,8 +29,3 @@ stages:
           location: $(location)
           bicepFilePath: "iac/service.ingestion/main.bicep"
           azureSubscription: $(armServiceConnectionName)
-          overrideParameters: >-
-            -deployBronze "{{placeholder}}"
-            -deploySilver "{{placeholder}}"
-            -deployGold "{{placeholder}}"
-

@@ -1,5 +1,3 @@
-.execute database script <|
-
 // Create 1-day aggregated metrics view
 //  - Soft delete disabled
 //  - Hot caching for 365 days

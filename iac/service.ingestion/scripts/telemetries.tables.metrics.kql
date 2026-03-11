@@ -1,5 +1,3 @@
-.execute database script <|
-
 // Create metrics table
 //  - Retention set to 3 days
 //  - Hot caching for 1 day
