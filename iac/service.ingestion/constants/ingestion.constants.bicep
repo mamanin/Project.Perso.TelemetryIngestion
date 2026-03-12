@@ -14,11 +14,11 @@ var ingestionConstants = {
     checkpointsTableName: 'partition-checkpoints'
   }
   bronze: {
-    partitionCount: 4
-    processingBatchSize: 100
-    processingWorkerCount: 4
-    scalingEventThreshold: 100*3
-    scalingActivationEventThreshold: 100*6
+    partitionCount: 6
+    processingBatchSize: 75
+    processingWorkerCount: 8
+    scalingEventThreshold: 75*3
+    scalingActivationEventThreshold: 75*6
   }
   silver: {
     partitionCount: 8
@@ -30,7 +30,7 @@ var ingestionConstants = {
   gold: {
     partitionCount: 6
     processingBatchSize: 500
-    processingWorkerCount: 6
+    processingWorkerCount: 4
     scalingEventThreshold: 500*3
     scalingActivationEventThreshold: 500*6
   }
