@@ -140,8 +140,10 @@ func (a *App) initializeOrchestrator() error {
 		return fmt.Errorf("failed to initialize event hub subscriber: %w", err)
 	}
 
+	h := gold.NewHandler(a.logger, a.adx)
+
 	o := processor.NewProcessor(a.cfg.Processor, a.logger, s, func(i int) processor.Worker {
-		return gold.NewWorker(i, a.cfg.EventHub.Subscriber.BatchSize, a.logger, gold.NewHandler(a.logger, a.adx))
+		return gold.NewWorker(i, a.cfg.EventHub.Subscriber.BatchSize, a.logger, h)
 	})
 
 	a.orchestrator = o

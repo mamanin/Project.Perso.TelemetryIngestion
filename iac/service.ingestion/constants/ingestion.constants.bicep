@@ -6,6 +6,11 @@ var ingestionConstants = {
     metricsName: 'telemetry-metrics'
     dataName: 'telemetry-data'
   }
+  consumerGroups: {
+    bronze: 'cg-bronze'
+    silver: 'cg-silver'
+    gold: 'cg-gold'
+  }
   dataExplorer: {
     telemetryDatabaseName: 'telemetries'
     telemetryTableName: 'metrics'

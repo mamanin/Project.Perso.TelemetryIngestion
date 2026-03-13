@@ -154,6 +154,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
         metadata: {
             eventHubNamespace: namespace.name
             eventHubName: ingestionConstants.eventhub.metricsName
+            consumerGroup: ingestionConstants.consumerGroups.silver
             storageAccountName: storageAccount.name
             blobContainer: ingestionConstants.tableStorage.checkpointsTableName
             checkpointStrategy: 'blobMetadata'
@@ -188,6 +189,10 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       {
         name: 'EventHub__Subscriber__Name'
         value: ingestionConstants.eventhub.metricsName
+      }
+      {
+        name: 'EventHub__Subscriber__ConsumerGroup'
+        value: ingestionConstants.consumerGroups.silver
       }
       {
         name: 'EventHub__Subscriber__BatchSize'

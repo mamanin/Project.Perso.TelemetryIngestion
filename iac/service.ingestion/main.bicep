@@ -218,10 +218,8 @@ module eventHubNamespace '../common/modules/eventhub.namespace.module.bicep' = {
     prefix: prefix
     location: location
     tags: tags
-    sku: 'Standard'
+    sku: 'Premium'
     capacity: 1
-    isAutoInflateEnabled: true
-    maximumThroughputUnits: 40
   }
 }
 
@@ -231,6 +229,9 @@ module rawEventHub '../common/modules/eventhub.module.bicep' = {
     name: ingestionConstants.eventhub.rawName
     namespaceName: eventHubNamespace.outputs.name
     partitionCount: ingestionConstants.bronze.partitionCount
+    consumerGroups: [
+      ingestionConstants.consumerGroups.bronze
+    ]
   }
 }
 
@@ -240,6 +241,9 @@ module metricsEventHub '../common/modules/eventhub.module.bicep' = {
     name: ingestionConstants.eventhub.metricsName
     namespaceName: eventHubNamespace.outputs.name
     partitionCount: ingestionConstants.silver.partitionCount
+    consumerGroups: [
+      ingestionConstants.consumerGroups.silver
+    ]
   }
 }
 
@@ -249,5 +253,8 @@ module dataEventHub '../common/modules/eventhub.module.bicep' = {
     name: ingestionConstants.eventhub.dataName
     namespaceName: eventHubNamespace.outputs.name
     partitionCount: ingestionConstants.gold.partitionCount
+    consumerGroups: [
+      ingestionConstants.consumerGroups.gold
+    ]
   }
 }

@@ -21,6 +21,9 @@ param partitionCount int = 1
 @minValue(1)
 param retentionTimeInHours int = 10
 
+@description('The consumer groups to create for the Event Hub')
+param consumerGroups string[] = []
+
 resource namespace 'Microsoft.EventHub/namespaces@2025-05-01-preview' existing = {
   name: namespaceName
 }
@@ -37,3 +40,8 @@ resource eventHub 'Microsoft.EventHub/namespaces/eventhubs@2025-05-01-preview' =
     }
   }
 }
+
+resource consumerGroup 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2025-05-01-preview' = [for cg in consumerGroups: {
+  parent: eventHub
+  name: cg
+}]

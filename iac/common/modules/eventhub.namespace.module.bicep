@@ -54,8 +54,8 @@ resource namespace 'Microsoft.EventHub/namespaces@2025-05-01-preview' = {
   }
   properties: {
     minimumTlsVersion: '1.2'
-    isAutoInflateEnabled: isAutoInflateEnabled
-    maximumThroughputUnits: maximumThroughputUnits
+    isAutoInflateEnabled: sku == 'Premium' ? false : isAutoInflateEnabled
+    maximumThroughputUnits: sku == 'Premium' ? 0 : maximumThroughputUnits
     kafkaEnabled: true
     zoneRedundant: false
     disableLocalAuth: true

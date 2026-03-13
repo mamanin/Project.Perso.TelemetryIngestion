@@ -15,9 +15,10 @@ import (
 
 // SubscriberConfig holds configuration for the Event Hub subscriber.
 type SubscriberConfig struct {
-	Name         string `env:"Name,required"`
-	BatchSize    int    `env:"BatchSize,required"`
-	PrefetchSize int32  `env:"PrefetchSize,required"`
+	Name          string `env:"Name,required"`
+	ConsumerGroup string `env:"ConsumerGroup" envDefault:"$Default"`
+	BatchSize     int    `env:"BatchSize,required"`
+	PrefetchSize  int32  `env:"PrefetchSize,required"`
 }
 
 // Subscriber implements the messaging.Subscriber interface for Azure Event Hub.
@@ -46,7 +47,7 @@ type SubscriberOption struct {
 
 // NewSubscriber creates a new Event Hub subscriber.
 func NewSubscriber(logger logger.Logger, cfg Config, cred credential.AzureCredentials, cp *container.Checkpoint) (*Subscriber, error) {
-	client, err := azeventhubs.NewConsumerClient(cfg.FullyQualifiedNamespace, cfg.Subscriber.Name, azeventhubs.DefaultConsumerGroup, cred, nil)
+	client, err := azeventhubs.NewConsumerClient(cfg.FullyQualifiedNamespace, cfg.Subscriber.Name, cfg.Subscriber.ConsumerGroup, cred, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer client: %w", err)
 	}
