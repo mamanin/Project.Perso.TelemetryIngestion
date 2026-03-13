@@ -60,25 +60,19 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2025-08-01-pre
   name: 'default'
 }
 
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2025-01-31-preview' existing = {
+  name: BuildResourceName(prefix, 'uai', '002')
+}
+
 // -----------------------------------------------------------------------
 // Service Core
 // -----------------------------------------------------------------------
-
-module identity '../common/modules/identity.userassigned.module.bicep' = {
-  name: 'identityDeploy'
-  params: {
-    prefix: prefix
-    number: '002'
-    location: location
-    tags: tags
-  }
-}
 
 module containerRegistryRoleAssignment '../common/modules/rbac/rbac.containerregistry.module.bicep' = {
   name: 'containerRegistryRoleAssignmentDeploy'
   params: {
     name: containerRegistry.name
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     roles: [
       rbacRoles.containerregistry['Acr Pull']
     ]
@@ -89,7 +83,7 @@ module storageAccountRoleAssignment '../common/modules/rbac/rbac.storageaccount.
   name: 'storageAccountRoleAssignmentDeploy'
   params: {
     name: storageAccount.name
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     roles: [
       rbacRoles.storageaccount['Storage Blob Data Contributor']
     ]
@@ -101,7 +95,7 @@ module metricsEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.modul
   params: {
     namespaceName: namespace.name
     name: ingestionConstants.eventhub.metricsName
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     roles: [
       rbacRoles.eventhub['Azure Event Hubs Data Receiver']
     ]
@@ -113,7 +107,7 @@ module dataEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.b
   params: {
     namespaceName: namespace.name
     name: ingestionConstants.eventhub.dataName
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     roles: [
       rbacRoles.eventhub['Azure Event Hubs Data Sender']
     ]
@@ -124,7 +118,7 @@ module redisRoleAssignment '../common/modules/redis.accesspolicy.module.bicep' =
   name: 'redisRoleAssignmentDeploy'
   params: {
     redisName: redis.name
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     // Currently the only supported access policy is 'default' allowing all permissions.
     // In the future apply the following access : '+@read +@write ~service.ingestion:silver:*'.
   }
@@ -144,7 +138,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
     number: '002'
     location: location
     tags: tags
-    managedIdentityId: identity.outputs.id
+    managedIdentityId: identity.id
     containerAppEnvironmentId: containerAppEnvironment.id
     containerServer: containerRegistry.properties.loginServer
     containerImage: '/service.ingestion/silver:${version}'
@@ -156,7 +150,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       name: 'eventhub-scaler'
       custom: {
         type: 'azure-eventhub'
-        identity: identity.outputs.id
+        identity: identity.id
         metadata: {
             eventHubNamespace: namespace.name
             eventHubName: ingestionConstants.eventhub.metricsName
@@ -175,7 +169,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       }
       {
         name: 'AZURE_CLIENT_ID'
-        value: identity.outputs.clientId
+        value: identity.properties.clientId
       }
 
       // App settings

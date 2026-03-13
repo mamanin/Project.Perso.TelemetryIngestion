@@ -55,25 +55,19 @@ resource kustoCluster 'Microsoft.Kusto/clusters@2024-04-13' existing = {
   name: BuildResourceName(prefix, 'adx', '001')
 }
 
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2025-01-31-preview' existing = {
+  name: BuildResourceName(prefix, 'uai', '003')
+}
+
 // -----------------------------------------------------------------------
 // Service Core
 // -----------------------------------------------------------------------
-
-module identity '../common/modules/identity.userassigned.module.bicep' = {
-  name: 'identityDeploy'
-  params: {
-    prefix: prefix
-    number: '003'
-    location: location
-    tags: tags
-  }
-}
 
 module containerRegistryRoleAssignment '../common/modules/rbac/rbac.containerregistry.module.bicep' = {
   name: 'containerRegistryRoleAssignmentDeploy'
   params: {
     name: containerRegistry.name
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     roles: [
       rbacRoles.containerregistry['Acr Pull']
     ]
@@ -84,7 +78,7 @@ module storageAccountRoleAssignment '../common/modules/rbac/rbac.storageaccount.
   name: 'storageAccountRoleAssignmentDeploy'
   params: {
     name: storageAccount.name
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     roles: [
       rbacRoles.storageaccount['Storage Blob Data Contributor']
     ]
@@ -96,7 +90,7 @@ module dataEventHubRoleAssignment '../common/modules/rbac/rbac.eventhub.module.b
   params: {
     namespaceName: namespace.name
     name: ingestionConstants.eventhub.dataName
-    principalId: identity.outputs.principalId
+    principalId: identity.properties.principalId
     roles: [
       rbacRoles.eventhub['Azure Event Hubs Data Receiver']
     ]
@@ -108,7 +102,7 @@ module kustoClusterDatabaseRoleAssignment '../common/modules/rbac/rbac.kusto.dat
   params: {
     kustoClusterName: kustoCluster.name
     databaseName: ingestionConstants.dataExplorer.telemetryDatabaseName
-    principalId: identity.outputs.clientId
+    principalId: identity.properties.clientId
     roles: [
       'Ingestor'
     ]
@@ -128,7 +122,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
     number: '003'
     location: location
     tags: tags
-    managedIdentityId: identity.outputs.id
+    managedIdentityId: identity.id
     containerAppEnvironmentId: containerAppEnvironment.id
     containerServer: containerRegistry.properties.loginServer
     containerImage: '/service.ingestion/gold:${version}'
@@ -140,7 +134,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       name: 'eventhub-scaler'
       custom: {
         type: 'azure-eventhub'
-        identity: identity.outputs.id
+        identity: identity.id
         metadata: {
             eventHubNamespace: namespace.name
             eventHubName: ingestionConstants.eventhub.dataName
@@ -159,7 +153,7 @@ module containerApp '../common/modules/containerapp.module.bicep' = {
       }
       {
         name: 'AZURE_CLIENT_ID'
-        value: identity.outputs.clientId
+        value: identity.properties.clientId
       }
 
       // App settings

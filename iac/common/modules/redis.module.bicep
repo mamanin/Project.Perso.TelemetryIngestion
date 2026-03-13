@@ -23,7 +23,7 @@ param location string = resourceGroup().location
 param tags object = {}
 
 @description('The SKU of the Redis Cache')
-param sku 'Balanced_B0' | 'Balanced_B1' | 'Balanced_B2' | 'Balanced_B3' = 'Balanced_B0'
+param sku 'Balanced_B0' | 'Balanced_B1' | 'Balanced_B10' | 'ComputeOptimized_X10' = 'Balanced_B0'
 
 @description('Enable high availability for the Redis Cache')
 param highAvailability bool = true

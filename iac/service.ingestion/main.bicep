@@ -75,6 +75,42 @@ module containerAppEnvironment '../common/modules/containerappenv.module.bicep' 
   }
 }
 
+module bronzeIdentity '../common/modules/identity.userassigned.module.bicep' = {
+  name: 'bronzeIdentityDeploy'
+  params: {
+    prefix: prefix
+    number: '001'
+    location: location
+    tags: union(tags, {
+      application: 'bronze'
+    })
+  }
+}
+
+module silverIdentity '../common/modules/identity.userassigned.module.bicep' = {
+  name: 'silverIdentityDeploy'
+  params: {
+    prefix: prefix
+    number: '002'
+    location: location
+    tags: union(tags, {
+      application: 'silver'
+    })
+  }
+}
+
+module goldIdentity '../common/modules/identity.userassigned.module.bicep' = {
+  name: 'goldIdentityDeploy'
+  params: {
+    prefix: prefix
+    number: '003'
+    location: location
+    tags: union(tags, {
+      application: 'gold'
+    })
+  }
+}
+
 // -----------------------------------------------------------------------
 // Storage Resources
 // -----------------------------------------------------------------------
@@ -109,7 +145,7 @@ module redisCache '../common/modules/redis.module.bicep' = {
     prefix: prefix
     location: location
     tags: tags
-    sku: 'Balanced_B1'
+    sku: 'ComputeOptimized_X10'
     highAvailability: false
   }
 }
@@ -129,7 +165,7 @@ module kustoCluster '../common/modules/kusto.cluster.module.bicep' = {
     location: location
     tags: tags
     sku: {
-      name: 'Standard_E2ads_v5'
+      name: 'Standard_E8ads_v5'
       tier: 'Standard'
       capacity: 2
     }
@@ -185,7 +221,7 @@ module eventHubNamespace '../common/modules/eventhub.namespace.module.bicep' = {
     sku: 'Standard'
     capacity: 1
     isAutoInflateEnabled: true
-    maximumThroughputUnits: 10
+    maximumThroughputUnits: 40
   }
 }
 

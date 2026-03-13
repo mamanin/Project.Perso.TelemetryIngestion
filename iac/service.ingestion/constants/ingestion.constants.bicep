@@ -15,15 +15,15 @@ var ingestionConstants = {
   }
   bronze: {
     partitionCount: 6
-    processingBatchSize: 75
-    processingWorkerCount: 8
-    scalingEventThreshold: 75*3
-    scalingActivationEventThreshold: 75*6
+    processingBatchSize: 50
+    processingWorkerCount: 20
+    scalingEventThreshold: 50*3
+    scalingActivationEventThreshold: 50*6
   }
   silver: {
     partitionCount: 8
     processingBatchSize: 500
-    processingWorkerCount: 6
+    processingWorkerCount: 12
     scalingEventThreshold: 500*3
     scalingActivationEventThreshold: 500*6
   }

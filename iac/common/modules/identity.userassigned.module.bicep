@@ -22,17 +22,17 @@ param location string = resourceGroup().location
 @description('Resource tags')
 param tags object = {}
 
-resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2025-01-31-preview' = {
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2025-01-31-preview' = {
   name: BuildResourceName(prefix, 'uai', number)
   location: location
   tags: tags
 }
 
 @description('The resource ID of the User Assigned Identity')
-output id string = apiIdentity.id
+output id string = identity.id
 
 @description('The principal ID of the User Assigned Identity')
-output principalId string = apiIdentity.properties.principalId
+output principalId string = identity.properties.principalId
 
 @description('The client ID of the User Assigned Identity used for authentication to Azure services')
-output clientId string = apiIdentity.properties.clientId
+output clientId string = identity.properties.clientId

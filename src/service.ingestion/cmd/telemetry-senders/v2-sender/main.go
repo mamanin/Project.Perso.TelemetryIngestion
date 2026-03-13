@@ -42,7 +42,7 @@ func main() {
 }
 
 func sendBatch(ctx context.Context, sender *eventhub.Publisher) error {
-	nb := 200
+	nb := 100
 	for {
 		batch := make([][]byte, 0, nb)
 
@@ -69,7 +69,7 @@ func sendBatch(ctx context.Context, sender *eventhub.Publisher) error {
 func generateTelemetries() pkg.TelemetryV2Event {
 	event := pkg.TelemetryV2Event{
 		VersionDiscriminant: pkg.VersionDiscriminant{Version: pkg.V2},
-		DeviceId:            fmt.Sprintf("%d", rand.Intn(13000)+7000),
+		DeviceId:            fmt.Sprintf("%d", rand.Intn(110000)+10000),
 		Timestamp:           time.Now().Unix(),
 	}
 
