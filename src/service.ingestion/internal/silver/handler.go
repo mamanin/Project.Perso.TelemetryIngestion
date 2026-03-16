@@ -81,7 +81,7 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 		}
 
 		metricUpdates = append(metricUpdates, bytes)
-		rp.Set(ctx, mp.Key, mp.Item.Value, 20*time.Minute)
+		rp.Set(ctx, mp.Key, mp.Item.Value, 15*time.Minute)
 	}
 
 	if _, err := rp.Exec(ctx); err != nil {

@@ -145,7 +145,7 @@ module redisCache '../common/modules/redis.module.bicep' = {
     prefix: prefix
     location: location
     tags: tags
-    sku: 'ComputeOptimized_X10'
+    sku: 'ComputeOptimized_X20'
     highAvailability: false
   }
 }
@@ -219,7 +219,7 @@ module eventHubNamespace '../common/modules/eventhub.namespace.module.bicep' = {
     location: location
     tags: tags
     sku: 'Premium'
-    capacity: 1
+    capacity: 2
   }
 }
 
