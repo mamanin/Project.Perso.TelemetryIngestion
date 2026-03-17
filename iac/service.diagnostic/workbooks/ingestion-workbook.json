@@ -142,16 +142,16 @@
                     "metrics": [
                       {
                         "namespace": "microsoft.eventhub/namespaces",
-                        "metric": "microsoft.eventhub/namespaces--IncomingMessages",
+                        "metric": "microsoft.eventhub/namespaces--IncomingBytes",
                         "aggregation": 1
                       },
                       {
                         "namespace": "microsoft.eventhub/namespaces",
-                        "metric": "microsoft.eventhub/namespaces--OutgoingMessages",
+                        "metric": "microsoft.eventhub/namespaces--OutgoingBytes",
                         "aggregation": 1
                       }
                     ],
-                    "title": "Event Hub - telemetry-raw : Incoming / Outgoing Messages",
+                    "title": "Event Hub - telemetry-raw : Incoming / Outgoing Bytes",
                     "filters": [
                       {
                         "key": "EntityName",
@@ -432,16 +432,16 @@
                     "metrics": [
                       {
                         "namespace": "microsoft.eventhub/namespaces",
-                        "metric": "microsoft.eventhub/namespaces--IncomingMessages",
+                        "metric": "microsoft.eventhub/namespaces--IncomingBytes",
                         "aggregation": 1
                       },
                       {
                         "namespace": "microsoft.eventhub/namespaces",
-                        "metric": "microsoft.eventhub/namespaces--OutgoingMessages",
+                        "metric": "microsoft.eventhub/namespaces--OutgoingBytes",
                         "aggregation": 1
                       }
                     ],
-                    "title": "Event Hub - telemetry-metrics : Incoming / Outgoing Messages",
+                    "title": "Event Hub - telemetry-metrics : Incoming / Outgoing Bytes",
                     "filters": [
                       {
                         "key": "EntityName",
@@ -814,16 +814,16 @@
                     "metrics": [
                       {
                         "namespace": "microsoft.eventhub/namespaces",
-                        "metric": "microsoft.eventhub/namespaces--IncomingMessages",
+                        "metric": "microsoft.eventhub/namespaces--IncomingBytes",
                         "aggregation": 1
                       },
                       {
                         "namespace": "microsoft.eventhub/namespaces",
-                        "metric": "microsoft.eventhub/namespaces--OutgoingMessages",
+                        "metric": "microsoft.eventhub/namespaces--OutgoingBytes",
                         "aggregation": 1
                       }
                     ],
-                    "title": "Event Hub - telemetry-data : Incoming / Outgoing Messages",
+                    "title": "Event Hub - telemetry-data : Incoming / Outgoing Bytes",
                     "filters": [
                       {
                         "key": "EntityName",
