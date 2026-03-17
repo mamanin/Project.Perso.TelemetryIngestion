@@ -66,10 +66,9 @@ func LoadAspireConfig() (*AspireConfig, error) {
 
 	port, _ := strconv.Atoi(os.Getenv(RedisPortKey))
 	cfg.redis = redis.AspireConfig{
-		Host:        os.Getenv(RedisHostKey),
-		Port:        port,
-		Password:    os.Getenv(RedisPasswordKey),
-		Connections: workers + workers/2,
+		Host:     os.Getenv(RedisHostKey),
+		Port:     port,
+		Password: os.Getenv(RedisPasswordKey),
 	}
 
 	return cfg, nil

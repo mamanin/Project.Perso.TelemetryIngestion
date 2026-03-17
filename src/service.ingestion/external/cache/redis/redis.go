@@ -3,7 +3,6 @@
 import (
 	"crypto/tls"
 	"fmt"
-	"time"
 
 	entraid "github.com/redis/go-redis-entraid"
 	"github.com/redis/go-redis/v9"
@@ -20,14 +19,13 @@ type Config struct {
 
 // AspireConfig holds configuration for connecting to an Aspire Redis instance.
 type AspireConfig struct {
-	Host        string
-	Port        int
-	Password    string
-	Connections int
+	Host     string
+	Port     int
+	Password string
 }
 
 // NewRedis creates a new redis.Client based on the provided configuration.
-func NewRedis(cfg Config) (*Client, error) {
+func NewRedis(cfg Config, workers int) (*Client, error) {
 	provider, err := entraid.NewDefaultAzureCredentialsProvider(entraid.DefaultAzureCredentialsProviderOptions{})
 
 	if err != nil {
@@ -37,8 +35,8 @@ func NewRedis(cfg Config) (*Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:                         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		TLSConfig:                    &tls.Config{MinVersion: tls.VersionTLS13},
-		ReadTimeout:                  1 * time.Second,
-		WriteTimeout:                 1 * time.Second,
+		PoolSize:                     workers + workers/2,
+		MinIdleConns:                 workers,
 		StreamingCredentialsProvider: provider,
 	})
 
@@ -48,11 +46,9 @@ func NewRedis(cfg Config) (*Client, error) {
 // NewRedisForAspire creates a new redis.Client based on the provided Aspire configuration.
 func NewRedisForAspire(cfg AspireConfig) (*Client, error) {
 	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-		Password:     cfg.Password,
-		DB:           0,
-		MaxIdleConns: cfg.Connections,
-		MinIdleConns: cfg.Connections,
+		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		Password: cfg.Password,
+		DB:       0,
 		TLSConfig: &tls.Config{
 			MinVersion: tls.VersionTLS13,
 		},

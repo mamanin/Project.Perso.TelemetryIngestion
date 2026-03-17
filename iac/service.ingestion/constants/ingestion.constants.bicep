@@ -21,14 +21,15 @@ var ingestionConstants = {
   bronze: {
     partitionCount: 6
     processingBatchSize: 50
-    processingWorkerCount: 20
+    processingWorkerCount: 16
     scalingEventThreshold: 50*3
     scalingActivationEventThreshold: 50*6
   }
   silver: {
+    // ⚠️ There is a redis connection limitation, I would not go above 8 partitions with 7 workers. I haven't found a fix for this.
     partitionCount: 8
     processingBatchSize: 500
-    processingWorkerCount: 12
+    processingWorkerCount: 7
     scalingEventThreshold: 500*3
     scalingActivationEventThreshold: 500*6
   }

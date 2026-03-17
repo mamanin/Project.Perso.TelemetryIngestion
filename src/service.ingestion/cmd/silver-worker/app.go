@@ -125,7 +125,7 @@ func (a *App) initializeCredentials() error {
 
 // initializeRedis sets up the redis cache.
 func (a *App) initializeRedis() error {
-	r, err := redis.NewRedis(a.cfg.Redis)
+	r, err := redis.NewRedis(a.cfg.Redis, a.cfg.Processor.Workers)
 
 	if err != nil {
 		return fmt.Errorf("failed to initialize redis client: %w", err)
