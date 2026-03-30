@@ -1,8 +1,8 @@
-﻿#:package Aspire.Hosting.Azure.EventHubs@13.1.2
-#:package Aspire.Hosting.Azure.Kusto@13.1.2-preview.1.26125.13
-#:package Aspire.Hosting.Azure.Storage@13.1.2
-#:package Aspire.Hosting.Redis@13.1.2
-#:sdk Aspire.AppHost.Sdk@13.1.2
+﻿#:package Aspire.Hosting.Azure.EventHubs@13.2.0
+#:package Aspire.Hosting.Azure.Kusto@13.2.0-preview.1.26170.3
+#:package Aspire.Hosting.Azure.Storage@13.2.0
+#:package Aspire.Hosting.Redis@13.2.0
+#:sdk Aspire.AppHost.Sdk@13.2.0
 #:package CommunityToolkit.Aspire.Hosting.Golang@13.0.0
 #:package LupusBytes.Aspire.Hosting.Azure.EventHubs.LiveExplorer@2.0.0
 
@@ -11,16 +11,16 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Add Azure services
 var cluster = builder
     .AddAzureKustoCluster("tispocadx001")
-    .RunAsEmulator(e => e.WithLifetime(ContainerLifetime.Persistent))
-    .WithEndpoint("http", e => e.Port = 56700);
+    .RunAsEmulator(e => {
+        e.WithLifetime(ContainerLifetime.Persistent);
+    });
+
 var metricsDb = cluster
-    .AddReadWriteDatabase("telemetries")
-//     .WithCreationScript(
+    .AddReadWriteDatabase("telemetries");
 // """
-//     .alter table metrics policy streamingingestion enable;
+//      .execute database script <|
+//      .alter table metrics policy streamingingestion enable;
 // """
-//     )
-    ;
 
 var eventHub = builder
     .AddAzureEventHubs("tispocevh001")

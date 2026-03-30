@@ -1,12 +1,39 @@
-// Create 10-minute aggregated metrics view
-//  - Retention set to 30 days
-//  - Hot caching for 7 days
-.create-or-alter materialized-view with (docstring='10 minute stats') metrics_10m on table metrics
+// -----------------------------------------------------------------------
+// metrics_10m_store :
+//   Ten minute summarize with all intermediate aggregation values.
+//
+//   Retention: 30 days | Hot cache: 7 days
+// -----------------------------------------------------------------------
+.create-or-alter materialized-view with (docstring='ten minute summarize of intermediate aggregation values')
+    metrics_10m_store on table metrics_store
     {
-     metrics_aggregator(10m)
-    | summarize telemetry = make_bag(bag_pack(metric, value)) by timestamp, device_id, sensor
+    metrics_store
+    | summarize
+        avg_value = avgif(value_real, isnotnull(value_real)),
+        count_on = countif(value_string == "on"),
+        count_good = countif(value_string == "good"),
+        group_timestamp = arg_max(timestamp, value_real, value_string)
+        by bin(timestamp, 10m), device_id, sensor, metric
     }
 
-// View configuration
-.alter-merge materialized-view metrics_10m policy retention softdelete = 30d recoverability = disabled;
-.alter materialized-view metrics_10m policy caching hot = 7d;
+.alter-merge materialized-view metrics_10m_store policy retention softdelete = 30d recoverability = disabled;
+.alter materialized-view metrics_10m_store policy caching hot = 7d;
+
+// -----------------------------------------------------------------------
+// metrics_10m_bag :
+//   Resolves intermediate aggregation values from metrics_10m_store
+//   into final metric values.
+//
+//   Parameters:
+//     - device_id : the device to filter on
+//     - sensor    : the sensor to filter on (optional)
+// -----------------------------------------------------------------------
+.create-or-alter function with (docstring='resolves ten minute aggregated metrics into a bag of telemetry')
+    metrics_10m_bag(deviceId: string, sensorName: string = "")
+ {
+    materialized_view('metrics_10m_store')
+    | where device_id == deviceId
+    | where isempty(sensorName) or sensor == sensorName
+    | invoke  resolve_metrics()
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
+ }

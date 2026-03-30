@@ -1,34 +1,34 @@
 // -----------------------------------------------------------------------
-// metrics_1d_store :
-//   One day summarize with all intermediate aggregation values.
+// metrics_1mo_store :
+//   Monthly summarize with intermediate aggregation values.
 //
-//   Hot cache: 365 days
+//   Hot cache: 1095 days
 // -----------------------------------------------------------------------
-.create-or-alter materialized-view with (docstring='one day summarize of intermediate aggregation values')
-    metrics_1d_store on table metrics_store
+.create-or-alter materialized-view with (docstring='monthly summarize of intermediate aggregation values')
+    metrics_1mo_store on table metrics_store
     {
     metrics_store
     | summarize
         avg_value = avgif(value_real, isnotnull(value_real)),
         group_timestamp = arg_max(timestamp, value_real, value_string)
-        by startofday(timestamp), device_id, sensor, metric
+        by startofmonth(timestamp), device_id, sensor, metric
     }
 
-.alter materialized-view metrics_1d_store policy caching hot = 365d;
+.alter materialized-view metrics_1mo_store policy caching hot = 1095d;
 
 // -----------------------------------------------------------------------
-// metrics_1d_bag :
-//   Resolves intermediate aggregation values from metrics_1d_store
+// metrics_1mo_bag :
+//   Resolves intermediate aggregation values from metrics_1mo_store
 //   into final metric values.
 //
 //   Parameters:
 //     - device_id : the device to filter on
 //     - sensor    : the sensor to filter on (optional)
 // -----------------------------------------------------------------------
-.create-or-alter function with (docstring='resolves one day of aggregated metrics into a bag of telemetry')
-    metrics_1d_bag(deviceId: string, sensorName: string = "")
+.create-or-alter function with (docstring='resolves monthly aggregated metrics into a bag of telemetry')
+    metrics_1mo_bag(deviceId: string, sensorName: string = "")
  {
-    materialized_view('metrics_1d_store')
+    materialized_view('metrics_1mo_store')
     | where device_id == deviceId
     | where isempty(sensorName) or sensor == sensorName
     | extend count_on = long(0), count_good = long(0)

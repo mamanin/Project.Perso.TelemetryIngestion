@@ -181,28 +181,33 @@ module kustoDatabase '../common/modules/kusto.cluster.database.module.bicep' = {
     scripts: [
       {
         name: 'create-metrics-tables'
-        scriptVersion: 'v1.0.1'
+        scriptVersion: 'v1.0.0'
         script: loadTextContent('scripts/telemetries.tables.metrics.kql')
       }
       {
         name: 'create-devices-status-view'
-        scriptVersion: 'v1.0.1'
+        scriptVersion: 'v1.0.0'
         script: loadTextContent('scripts/telemetries.views.devices.state.kql')
       }
       {
         name: 'create-10-minutes-view'
-        scriptVersion: 'v1.0.1'
+        scriptVersion: 'v1.0.0'
         script: loadTextContent('scripts/telemetries.views.metrics.10m.kql')
       }
       {
         name: 'create-1-hour-view'
-        scriptVersion: 'v1.0.1'
+        scriptVersion: 'v1.0.0'
         script: loadTextContent('scripts/telemetries.views.metrics.1h.kql')
       }
       {
         name: 'create-1-day-view'
-        scriptVersion: 'v1.0.1'
+        scriptVersion: 'v1.0.0'
         script: loadTextContent('scripts/telemetries.views.metrics.1d.kql')
+      }
+      {
+        name: 'create-1-month-view'
+        scriptVersion: 'v1.0.0'
+        script: loadTextContent('scripts/telemetries.views.metrics.1mo.kql')
       }
     ]
   }

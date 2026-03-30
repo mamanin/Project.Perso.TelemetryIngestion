@@ -1,19 +1,54 @@
-// Create devices status materialized view
-//  - Soft delete disabled
-//  - Hot caching for 365 days
-.create-or-alter materialized-view with (docstring='devices status') devices_state on table metrics
+// -----------------------------------------------------------------------
+// devices_status :
+//   Tracks the most recent state value per device.
+//
+//  Hot cache: 365 days
+// -----------------------------------------------------------------------
+.create-or-alter materialized-view with (docstring='last known device status', lookback=1h)
+    devices_status on table metrics_store
     {
-     devices_status_monitor()
-    | join kind=inner (
-         devices_sensors_monitor() 
-        | where device_id == device_id
-        | project device_id, sensors, sensors_count = array_length(sensors)
-        )
-        on device_id
-    | summarize
-        arg_max(last_update, status, sensors, sensors_count)
-        by device_id
+    metrics_store
+    | where sensor == "device" and metric == "state"
+    | summarize arg_max(timestamp, value_string) by device_id
     }
 
-// View configuration
-.alter materialized-view devices_state policy caching hot = 365d;
+.alter materialized-view devices_status policy caching hot = 365d;
+
+// -----------------------------------------------------------------------
+// devices_sensors :
+//   Tracks the set of distinct sensor types reporting for each device.
+//
+//  Hot cache: 365 days
+// -----------------------------------------------------------------------
+.create-or-alter materialized-view with (docstring='unique sensors per device')
+    devices_sensors on table metrics_store
+    {
+    metrics_store
+    | where sensor != "device"
+    | extend sensor_name = replace_string(sensor, "device.", "")
+    | summarize sensors = make_set(sensor_name, 50) by device_id
+    }
+
+.alter materialized-view devices_sensors policy caching hot = 365d;
+
+// -----------------------------------------------------------------------
+// devices_state :
+//   Queryable function to retrieve the latest device state.
+// -----------------------------------------------------------------------
+.create-or-alter function with (view=true, docstring='devices status with sensors')
+    devices_state()
+ {
+    materialized_view('devices_status')
+    | project device_id, status = value_string, last_update = timestamp
+    | join kind=leftouter (
+        materialized_view('devices_sensors')
+        | project device_id, sensors
+        )
+        on device_id
+    | project
+        device_id,
+        last_update,
+        status,
+        sensors = coalesce(sensors, dynamic([])),
+        sensors_count = coalesce(array_length(sensors), 0)
+ }

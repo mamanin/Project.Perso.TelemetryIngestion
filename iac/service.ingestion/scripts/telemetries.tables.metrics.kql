@@ -1,6 +1,9 @@
-// Create metrics table
-//  - Retention set to 3 days
-//  - Hot caching for 1 day
+// -----------------------------------------------------------------------
+// metrics :
+//  Contains raw telemetry events ingested from devices.
+//
+//  Retention: 7 hours | Hot cache: 7 hours
+// -----------------------------------------------------------------------
 .create-merge table metrics (
     timestamp: datetime,
     device_id: string,
@@ -10,91 +13,134 @@
     unit: string
     );
 
-// View configuration
-.alter-merge table metrics policy retention softdelete = 3d recoverability = disabled;
-.alter table metrics policy caching hot = 1d;
+.alter-merge table metrics policy retention softdelete = 7h recoverability = disabled;
+.alter table metrics policy caching hot = 7h;
 .alter-merge table metrics policy ingestionbatching
 ```
 {
+    "MaximumBatchingTimeSpan": "00:01:00",
     "MaximumNumberOfItems" : 25000
 }
 ```;
 
-// Function to monitor devices status
-.create-or-alter function with (docstring='monitor devices status') devices_status_monitor()
+// -----------------------------------------------------------------------
+// metrics_store :
+//   Contains transformed telemetry events with typed value columns
+//   used by the materialized views.
+//
+//  Retention: 1 day | Hot cache: 1 day
+// -----------------------------------------------------------------------
+.create-merge table metrics_store (
+    timestamp: datetime,
+    device_id: string,
+    sensor: string,
+    metric: string,
+    value_real: real,
+    value_string: string,
+    unit: string
+    );
+
+.alter-merge table metrics_store policy retention softdelete = 1d recoverability = disabled;
+.alter table metrics_store policy caching hot = 1d;
+
+// -----------------------------------------------------------------------
+// transform_metrics :
+//   Transforms raw metrics into typed columns.
+// -----------------------------------------------------------------------
+.create-or-alter function with (docstring='transform raw metrics into typed columns')
+    transform_metrics()
  {
      metrics
-    | summarize
-        last_update = max(timestamp),
-        status = case(
-            take_any(sensor) == "device" and take_any(metric) == "state", iif(countif(tostring(value) == "on") > 0, "on", "$use_last$"),
-            ""
-        ),
-        arg_max(timestamp, last_value = value)
-        by bin(timestamp, 10m), device_id, sensor, metric
-    | where status != ""
-    | project
-        device_id,
-        last_update, 
-        status = iff(
-            status == "$use_last$", last_value,
-            status
-        ) 
+    | extend
+        value_real = iff(gettype(value) in("real", "long", "int", "double"), todouble(value), double(null)),
+        value_string = iff(not(gettype(value) in("real", "long", "int", "double")), tostring(value), "")
+    | project timestamp, device_id, sensor, metric, value_real, value_string, unit
  }
 
-// Function to monitor devices sensors
-.create-or-alter function with (docstring='monitor devices sensors') devices_sensors_monitor()
- {
-     metrics
-    | where isnotempty(sensor) and sensor != "device"
-    | extend sensor = replace_string(sensor, "device.", "")
-    | summarize
-        sensors = make_set(sensor) by device_id
-    | project
-        device_id,
-        sensors
- }
+.alter table metrics_store policy update
+```
+[
+    {
+        "IsEnabled": true,
+        "Source": "metrics",
+        "Query": "transform_metrics",
+        "IsTransactional": false,
+        "PropagateIngestionProperties": true
+    }
+]
+```;
 
-// Function to aggregate metrics over a specified period
-.create-or-alter function with (docstring='aggregate metrics over a specified period') metrics_aggregator(period: timespan)
+// -----------------------------------------------------------------------
+// metric_agg_rules :
+//   Overrides for metrics that don't follow the default behavior.
+//   Default: avg for numeric values, last for string values.
+//
+//   Only add rules here when the default is wrong:
+//     - "last"     : use the last value based in the window
+//     - "avg"      : use the average of all values in the window
+//     - "any_on"   : "on" if any value was "on" in window
+//     - "any_good" : "good" if any value was "good" in window
+// -----------------------------------------------------------------------
+.create-merge table metric_agg_rules (
+    sensor: string,
+    metric: string,
+    agg_type: string
+    );
+
+.set-or-replace metric_agg_rules <|
+    datatable(sensor: string, metric: string, agg_type: string)
+[
+    // Device
+    "device", "state", "any_on",
+    "device", "uptime", "last",
+    // Network
+    "device.network", "bytes_received", "last",
+    "device.network", "bytes_sent", "last",
+    "device.network", "packets_dropped", "last",
+    // Storage
+    "device.storage", "total_size", "last",
+    "device.storage", "used_size", "last",
+    "device.storage", "free_size", "last",
+    "device.storage", "health", "any_good",
+    // Battery
+    "device.battery", "cycle_count", "last",
+    "device.battery", "time_to_empty", "last"
+]
+
+// -----------------------------------------------------------------------
+// resolve_metrics :
+//   Resolves intermediate aggregation values from materialized views
+//   into final metric values using the metric_agg_rules lookup table.
+//
+//   Usage:
+//     resolve_metrics({{view_name}})
+// -----------------------------------------------------------------------
+.create-or-alter function with (docstring='resolve aggregated metric values based on aggregation rules')
+    resolve_metrics(
+    T: (group_timestamp: datetime,
+        device_id: string,
+        sensor: string,
+        metric: string,
+        avg_value: real,
+        count_on: long,
+        count_good: long,
+        value_real: real,
+        value_string: string)
+    )
  {
-     metrics
-    | summarize
-        computed_value = case(
-            take_any(sensor) == "device", case(
-                take_any(metric) == "state", iif(countif(tostring(value) == "on") > 0, "on", "$use_last$"),
-                take_any(metric) == "uptime", "$use_last$",
-                "$use_auto$"
-            ),
-            take_any(sensor) == "device.network", case(
-                take_any(metric) == "bytes_received", "$use_last$",
-                take_any(metric) == "bytes_sent", "$use_last$",
-                take_any(metric) == "packets_dropped", "$use_last$",
-                "$use_auto$"
-            ),
-            take_any(sensor) == "device.storage", case(
-                take_any(metric) == "used_size", "$use_last$",
-                take_any(metric) == "free_size", "$use_last$",
-                take_any(metric) == "health", iif(countif(tostring(value) == "good") > 0, "good", "$use_last$"),
-                "$use_auto$"
-            ),
-            take_any(sensor) == "device.battery", case(
-                take_any(metric) == "time_to_empty", "$use_last$",
-                "$use_auto$"
-            ),
-            "$use_auto$"
-        ),
-        avg_value = iff(gettype(take_any(value)) in ("real", "long", "int", "double"), avg(todouble(value)), double(null)),
-        arg_max(timestamp, last_value = value)
-        by bin(timestamp, period), device_id, sensor, metric
+     T
+    | lookup metric_agg_rules on sensor, metric
+    | extend last_value = iif(isnan(value_real), value_string, tostring(value_real))
     | project
-        timestamp,
+        group_timestamp,
         device_id,
         sensor,
         metric,
         value = case(
-            computed_value == "$use_last$", last_value,
-            computed_value == "$use_auto$", coalesce(todynamic(tostring(avg_value)), last_value),
-            last_value
+            agg_type == "last", last_value,
+            agg_type == "avg", iif(isnan(avg_value), last_value, tostring(avg_value)),
+            agg_type == "any_on", iif(count_on > 0, "on", last_value),
+            agg_type == "any_good", iif(count_good > 0, "good", last_value),
+            iif(isnan(avg_value), last_value, tostring(avg_value))
         )
  }
