@@ -32,7 +32,7 @@ func (h *Handler) DevicesPageHandler(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		var err error
-		devices, err = h.listDevices(ctx, devicesPageSize, "")
+		devices, err = h.listDevices(ctx, devicesPageSize, "", "")
 		return err
 	})
 
@@ -55,7 +55,8 @@ func (h *Handler) SearchDevicesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-	devices, err := h.listDevices(r.Context(), devicesPageSize, match)
+	status := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
+	devices, err := h.listDevices(r.Context(), devicesPageSize, match, status)
 	if err != nil {
 		h.logger.Error(err, "Error fetching devices from ADX: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -79,9 +80,9 @@ func (h *Handler) getDevicesStats(ctx context.Context) ([]dtos.TileDto, error) {
 	return dtos.NewTilesFromAdxDevicesStats(s), nil
 }
 
-// listDevices retrieves a list of devices from ADX based on the provided page size and match string.
-func (h *Handler) listDevices(ctx context.Context, pageSize int64, match string) ([]dtos.DeviceStateDto, error) {
-	d, err := h.adx.ListDevices(ctx, pageSize, match)
+// listDevices retrieves a list of devices from ADX based on the provided page size, match string, and status filter.
+func (h *Handler) listDevices(ctx context.Context, pageSize int64, match string, status string) ([]dtos.DeviceStateDto, error) {
+	d, err := h.adx.ListDevices(ctx, pageSize, match, status)
 	if err != nil {
 		h.logger.Error(err, "Error fetching devices from ADX: %v", err)
 		return nil, err

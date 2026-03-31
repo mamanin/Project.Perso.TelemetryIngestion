@@ -1,30 +1,63 @@
 package components
 
 import (
-  "service.data/internal/core/dtos"
+	"service.data/internal/core/dtos"
 )
 
-templ Tile(tile dtos.TileDto) {
-	<div>
-		<p>{ tile.Title }</p>
-		<p>{ tile.Value }</p>
-		<p>{ tile.Desc }</p>
-		<p>{ tile.Icon }</p>
-		<p>{ tile.Type }</p>
+templ Tile(tile dtos.TileDto, filterKey string) {
+	if filterKey != "" {
+		<button
+			type="button"
+			class={ "tile", tileTypeClass(tile.Type) }
+			:class={ "{ 'tile--active': filter === '" + filterKey + "' }" }
+			@click={ "filter = (filter === '" + filterKey + "') ? '' : '" + filterKey + "'; $dispatch('filter-changed')" }
+		>
+			@tileContent(tile)
+		</button>
+	} else {
+		<div class={ "tile", tileTypeClass(tile.Type) } style="cursor: default;">
+			@tileContent(tile)
+		</div>
+	}
+}
+
+templ tileContent(tile dtos.TileDto) {
+	<div class="tile-header">
+		<span class={ "tile-icon", tileIconClass(tile.Icon) }></span>
+		<p class="tile-title text-caption">{ tile.Title }</p>
 	</div>
+	<p class="tile-value text-display">{ tile.Value }</p>
+	<p class="tile-desc text-caption size-xs">{ tile.Desc }</p>
 }
 
-css infoTileStyle() {
+func tileTypeClass(tileType string) string {
+	switch tileType {
+	case "info":
+		return "tile--info"
+	case "success":
+		return "tile--success"
+	case "error":
+		return "tile--error"
+	case "warning":
+		return "tile--warning"
+	default:
+		return "tile--default"
+	}
 }
 
-css successTileStyle() {
-}
-
-css errorTileStyle() {
-}
-
-css warningTileStyle() {
-}
-
-css defaultTileStyle() {
+func tileIconClass(icon string) string {
+	switch icon {
+	case "device":
+		return "tile-icon--device"
+	case "online":
+		return "tile-icon--online"
+	case "offline":
+		return "tile-icon--offline"
+	case "warning":
+		return "tile-icon--warning"
+	case "sensor":
+		return "tile-icon--sensor"
+	default:
+		return ""
+	}
 }

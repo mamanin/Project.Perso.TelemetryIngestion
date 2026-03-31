@@ -17,15 +17,20 @@ const (
 		devices_state
 		| extend is_off = last_update < ago(1h)
 		| summarize
-				total_device = dcount(device_id),
-				on_device = dcountif(device_id, not(is_off) and status == "on"),
-				off_device = dcountif(device_id, is_off),
-				issue_device = dcountif(device_id, not(is_off) and (status == "warning" or status == "error")),
+				total_device = count(),
+				on_device = countif(not(is_off) and status == "on"),
+				off_device = countif(is_off),
+				issue_device = countif(not(is_off) and (status == "warning" or status == "error")),
 				total_sensors = sum(sensors_count)
 	`
 	listDevicesStateQuery = `
 		devices_state
 		| where device_id contains match
+		| extend is_off = last_update < ago(1h)
+		| where filterMode == ""
+				or (filterMode == "on" and not(is_off) and status == "on")
+				or (filterMode == "off" and is_off)
+				or (filterMode == "issue" and not(is_off) and (status == "warning" or status == "error"))
 		| sort by last_update desc, device_id
 		| project device_id, status, sensors, last_update
 	`
@@ -95,12 +100,12 @@ func (c *Client) GetDevicesStats(ctx context.Context) (DevicesStats, error) {
 }
 
 // ListDevices retrieves a list of Device, limited by the specified number of records to take.
-func (c *Client) ListDevices(ctx context.Context, take int64, match string) ([]DeviceState, error) {
+func (c *Client) ListDevices(ctx context.Context, take int64, match string, status string) ([]DeviceState, error) {
 	devices := make([]DeviceState, 0, take)
 
 	iter, err := c.client.Query(ctx, c.database,
 		kql.New(listDevicesStateQuery),
-		kusto.QueryParameters(kql.NewParameters().AddString("match", match)),
+		kusto.QueryParameters(kql.NewParameters().AddString("match", match).AddString("filterMode", status)),
 		kusto.QueryTakeMaxRecords(take),
 		kusto.QueryDataScope(kusto.DSHotCache),
 	)

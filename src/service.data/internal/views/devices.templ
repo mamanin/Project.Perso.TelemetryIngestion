@@ -7,8 +7,15 @@ import (
 
 templ DevicesView(stats []dtos.TileDto, devices []dtos.DeviceStateDto) {
 	@mainLayout("TIS - Devices") {
-		<article class="devices-view">
+		<article class="devices-view" x-data="{ filter: '' }">
+			<header class="page-header">
+				<div>
+					<h1 class="page-title">Devices</h1>
+					<p class="page-subtitle text-caption">Telemetry Ingestion Service</p>
+				</div>
+			</header>
 			@components.DeviceTiles(stats)
+			<input type="hidden" name="status" :value="filter"/>
 			<label>
 				<input
 					class="search-input font-semibold"
@@ -16,8 +23,10 @@ templ DevicesView(stats []dtos.TileDto, devices []dtos.DeviceStateDto) {
 					name="q"
 					placeholder="Search devices..."
 					hx-get="/devices/search"
-					hx-trigger="keyup changed delay:50ms"
+					hx-trigger="keyup changed delay:50ms, filter-changed from:closest article"
 					hx-target="#device-list"
+					hx-swap="outerHTML"
+					hx-include="[name='status']"
 					hx-sync="this:replace"
 				/>
 			</label>

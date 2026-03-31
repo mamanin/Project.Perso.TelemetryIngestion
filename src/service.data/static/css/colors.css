@@ -1,11 +1,32 @@
 ﻿:root {
-  --color-primary-bg: #0f0f0f;
-  --color-primary-border: #333333;
-  --color-primary-text: white;
+  --color-primary-bg: #0a0a0b;
+  --color-primary-border: #1f1f23;
+  --color-primary-text: #f0f0f2;
 
-  --color-secondary-bg: #1a1a1a;
-  --color-secondary-text: #aaaaaa;
+  --color-secondary-bg: #131316;
+  --color-secondary-border: #2a2a30;
+  --color-secondary-text: #a0a0ab;
 
-  --color-tertiary-bg: #262626;
-  --color-tertiary-text: #666666;
+  --color-tertiary-bg: #1c1c21;
+  --color-tertiary-text: #5a5a66;
+
+  --color-accent-info: #3b82f6;
+  --color-accent-info-muted: rgba(59, 130, 246, 0.10);
+  --color-accent-info-border: rgba(59, 130, 246, 0.25);
+
+  --color-accent-success: #10b981;
+  --color-accent-success-muted: rgba(16, 185, 129, 0.10);
+  --color-accent-success-border: rgba(16, 185, 129, 0.25);
+
+  --color-accent-error: #ef4444;
+  --color-accent-error-muted: rgba(239, 68, 68, 0.10);
+  --color-accent-error-border: rgba(239, 68, 68, 0.25);
+
+  --color-accent-warning: #f59e0b;
+  --color-accent-warning-muted: rgba(245, 158, 11, 0.10);
+  --color-accent-warning-border: rgba(245, 158, 11, 0.25);
+
+  --color-accent-default: #6b7280;
+  --color-accent-default-muted: rgba(107, 114, 128, 0.10);
+  --color-accent-default-border: rgba(107, 114, 128, 0.25);
 }

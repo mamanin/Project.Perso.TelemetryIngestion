@@ -6,14 +6,18 @@ import (
 
 templ DeviceTiles(stats []dtos.TileDto) {
 	<div class="device-tiles-container">
-	  for _, tile := range stats {
-      @Tile(tile)
-    }
+		for _, tile := range stats {
+			if tile.FilterKey != "" {
+				@Tile(tile, tile.FilterKey)
+			} else {
+				@Tile(tile, "")
+			}
+		}
 	</div>
 }
 
 templ DeviceList(devices []dtos.DeviceStateDto) {
-	<div class="device-list-container">
+	<div class="device-list-container" id="device-list">
 		if len(devices) == 0 {
 			<p class="no-results size-lg">No devices found.</p>
 		} else {
@@ -28,10 +32,26 @@ templ DeviceList(devices []dtos.DeviceStateDto) {
 
 templ DeviceItem(device dtos.DeviceStateDto) {
 	<li class="device-item">
-		<span class="device-name font-semibold">{ device.Id }</span>
-		for _, s := range device.Sensors {
-			<span class="device-type text-caption size-sm">{ s }</span>
-		}
-		<time class="device-id text-code" datetime={ device.Heartbeat } data-format="HH:mm">00:00</time>
+		<span class={ "status-dot", statusDotClass(device.Status) }></span>
+		<span class="device-name font-semibold truncate">{ device.Id }</span>
+		<span class="sensors-group">
+			for _, s := range device.Sensors {
+				<span class="sensor-pill text-caption size-xs">{ s }</span>
+			}
+		</span>
+		<time class="device-heartbeat text-code size-xs" title={ device.HeartbeatISO }>{ device.Heartbeat }</time>
 	</li>
+}
+
+func statusDotClass(status string) string {
+	switch status {
+	case "on":
+		return "status-dot--on"
+	case "warning":
+		return "status-dot--warning"
+	case "error":
+		return "status-dot--error"
+	default:
+		return "status-dot--off"
+	}
 }
