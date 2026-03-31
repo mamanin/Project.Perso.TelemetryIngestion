@@ -1,0 +1,248 @@
+.execute database script <|
+
+.create-merge table metrics (
+    timestamp: datetime,
+    device_id: string,
+    sensor: string,
+    metric: string,
+    value: dynamic,
+    unit: string
+    );
+
+.alter-merge table metrics policy retention softdelete = 7h recoverability = disabled;
+.alter table metrics policy caching hot = 7h;
+.alter-merge table metrics policy ingestionbatching
+```
+{
+    "MaximumBatchingTimeSpan": "00:01:00",
+    "MaximumNumberOfItems" : 25000
+}
+```;
+.alter table metrics policy streamingingestion enable;
+
+.create-merge table metrics_store (
+    timestamp: datetime,
+    device_id: string,
+    sensor: string,
+    metric: string,
+    value_real: real,
+    value_string: string,
+    unit: string
+    );
+
+.alter-merge table metrics_store policy retention softdelete = 1d recoverability = disabled;
+.alter table metrics_store policy caching hot = 1d;
+
+.create-or-alter function with (docstring='transform raw metrics into typed columns')
+    transform_metrics()
+ {
+     metrics
+    | extend
+        value_real = iff(gettype(value) in("real", "long", "int", "double"), todouble(value), double(null)),
+        value_string = iff(not(gettype(value) in("real", "long", "int", "double")), tostring(value), "")
+    | project timestamp, device_id, sensor, metric, value_real, value_string, unit
+ }
+
+.alter table metrics_store policy update
+```
+[
+    {
+        "IsEnabled": true,
+        "Source": "metrics",
+        "Query": "transform_metrics",
+        "IsTransactional": false,
+        "PropagateIngestionProperties": true
+    }
+]
+```;
+
+.create-merge table metric_agg_rules (
+    sensor: string,
+    metric: string,
+    agg_type: string
+    );
+
+.set-or-replace metric_agg_rules <|
+    datatable(sensor: string, metric: string, agg_type: string)
+[
+    // Device
+    "device", "state", "any_on",
+    "device", "uptime", "last",
+    // Network
+    "device.network", "bytes_received", "last",
+    "device.network", "bytes_sent", "last",
+    "device.network", "packets_dropped", "last",
+    // Storage
+    "device.storage", "total_size", "last",
+    "device.storage", "used_size", "last",
+    "device.storage", "free_size", "last",
+    "device.storage", "health", "any_good",
+    // Battery
+    "device.battery", "cycle_count", "last",
+    "device.battery", "time_to_empty", "last"
+]
+
+.create-or-alter function with (docstring='resolve aggregated metric values based on aggregation rules')
+    resolve_metrics(
+    T: (group_timestamp: datetime,
+        device_id: string,
+        sensor: string,
+        metric: string,
+        avg_value: real,
+        count_on: long,
+        count_good: long,
+        value_real: real,
+        value_string: string)
+    )
+ {
+     T
+    | lookup metric_agg_rules on sensor, metric
+    | extend last_value = iif(isnan(value_real), value_string, tostring(value_real))
+    | project
+        group_timestamp,
+        device_id,
+        sensor,
+        metric,
+        value = case(
+            agg_type == "last", last_value,
+            agg_type == "avg", iif(isnan(avg_value), last_value, tostring(avg_value)),
+            agg_type == "any_on", iif(count_on > 0, "on", last_value),
+            agg_type == "any_good", iif(count_good > 0, "good", last_value),
+            iif(isnan(avg_value), last_value, tostring(avg_value))
+        )
+ }
+
+.create-or-alter materialized-view with (docstring='last known device status', lookback=1h)
+    devices_status on table metrics_store
+    {
+    metrics_store
+    | where sensor == "device" and metric == "state"
+    | summarize arg_max(timestamp, value_string) by device_id
+    }
+
+.alter materialized-view devices_status policy caching hot = 365d;
+
+.create-or-alter materialized-view with (docstring='unique sensors per device')
+    devices_sensors on table metrics_store
+    {
+    metrics_store
+    | where sensor != "device"
+    | extend sensor_name = replace_string(sensor, "device.", "")
+    | summarize sensors = make_set(sensor_name, 50) by device_id
+    }
+
+.alter materialized-view devices_sensors policy caching hot = 365d;
+
+.create-or-alter function with (view=true, docstring='devices status with sensors')
+    devices_state()
+ {
+    devices_status
+    | project device_id, status = value_string, last_update = timestamp
+    | join kind=leftouter (
+        devices_sensors
+        | project device_id, sensors
+        )
+        on device_id
+    | project
+        device_id,
+        last_update,
+        status,
+        sensors = coalesce(sensors, dynamic([])),
+        sensors_count = coalesce(array_length(sensors), 0)
+ }
+
+.create-or-alter materialized-view with (docstring='ten minute summarize of intermediate aggregation values')
+    metrics_10m_store on table metrics_store
+    {
+    metrics_store
+    | summarize
+        avg_value = avgif(value_real, isnotnull(value_real)),
+        count_on = countif(value_string == "on"),
+        count_good = countif(value_string == "good"),
+        group_timestamp = arg_max(timestamp, value_real, value_string)
+        by bin(timestamp, 10m), device_id, sensor, metric
+    }
+
+.alter-merge materialized-view metrics_10m_store policy retention softdelete = 30d recoverability = disabled;
+.alter materialized-view metrics_10m_store policy caching hot = 7d;
+
+.create-or-alter function with (docstring='resolves ten minute aggregated metrics into a bag of telemetry')
+    metrics_10m_bag(deviceId: string, sensorName: string = "")
+ {
+    metrics_10m_store
+    | where device_id == deviceId
+    | where isempty(sensorName) or sensor == sensorName
+    | invoke  resolve_metrics()
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
+ }
+
+.create-or-alter materialized-view with (docstring='one hour summarize of intermediate aggregation values')
+    metrics_1h_store on table metrics_store
+    {
+    metrics_store
+    | summarize
+        avg_value = avgif(value_real, isnotnull(value_real)),
+        count_on = countif(value_string == "on"),
+        count_good = countif(value_string == "good"),
+        group_timestamp = arg_max(timestamp, value_real, value_string)
+        by bin(timestamp, 1h), device_id, sensor, metric
+    }
+
+.alter-merge materialized-view metrics_1h_store policy retention softdelete = 365d recoverability = disabled;
+.alter materialized-view metrics_1h_store policy caching hot = 90d;
+
+.create-or-alter function with (docstring='resolves one hour of aggregated metrics into a bag of telemetry')
+    metrics_1h_bag(deviceId: string, sensorName: string = "")
+ {
+    metrics_1h_store
+    | where device_id == deviceId
+    | where isempty(sensorName) or sensor == sensorName
+    | invoke  resolve_metrics()
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
+ }
+
+.create-or-alter materialized-view with (docstring='one day summarize of intermediate aggregation values')
+    metrics_1d_store on table metrics_store
+    {
+    metrics_store
+    | summarize
+        avg_value = avgif(value_real, isnotnull(value_real)),
+        group_timestamp = arg_max(timestamp, value_real, value_string)
+        by startofday(timestamp), device_id, sensor, metric
+    }
+
+.alter materialized-view metrics_1d_store policy caching hot = 365d;
+
+.create-or-alter function with (docstring='resolves one day of aggregated metrics into a bag of telemetry')
+    metrics_1d_bag(deviceId: string, sensorName: string = "")
+ {
+    metrics_1d_store
+    | where device_id == deviceId
+    | where isempty(sensorName) or sensor == sensorName
+    | extend count_on = long(0), count_good = long(0)
+    | invoke  resolve_metrics()
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
+ }
+
+.create-or-alter materialized-view with (docstring='monthly summarize of intermediate aggregation values')
+    metrics_1mo_store on table metrics_store
+    {
+    metrics_store
+    | summarize
+        avg_value = avgif(value_real, isnotnull(value_real)),
+        group_timestamp = arg_max(timestamp, value_real, value_string)
+        by startofmonth(timestamp), device_id, sensor, metric
+    }
+
+.alter materialized-view metrics_1mo_store policy caching hot = 1095d;
+
+.create-or-alter function with (docstring='resolves monthly aggregated metrics into a bag of telemetry')
+    metrics_1mo_bag(deviceId: string, sensorName: string = "")
+ {
+    metrics_1mo_store
+    | where device_id == deviceId
+    | where isempty(sensorName) or sensor == sensorName
+    | extend count_on = long(0), count_good = long(0)
+    | invoke  resolve_metrics()
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
+ }

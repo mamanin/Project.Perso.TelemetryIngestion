@@ -130,7 +130,7 @@
  {
      T
     | lookup metric_agg_rules on sensor, metric
-    | extend last_value = iif(isnan(value_real), value_string, tostring(value_real))
+    | extend last_value = iif(isnotnull(value_real), tostring(value_real), value_string)
     | project
         group_timestamp,
         device_id,
