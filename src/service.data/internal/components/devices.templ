@@ -7,11 +7,7 @@ import (
 templ DeviceTiles(stats []dtos.TileDto) {
 	<div class="device-tiles-container">
 		for _, tile := range stats {
-			if tile.FilterKey != "" {
-				@Tile(tile, tile.FilterKey)
-			} else {
-				@Tile(tile, "")
-			}
+			@Tile(tile)
 		}
 	</div>
 }
@@ -21,26 +17,44 @@ templ DeviceList(devices []dtos.DeviceStateDto) {
 		if len(devices) == 0 {
 			<p class="no-results size-lg">No devices found.</p>
 		} else {
-			<ul class="device-list">
-				for _, device := range devices {
-					@DeviceItem(device)
-				}
-			</ul>
+			<table class="device-table">
+				<thead>
+					<tr>
+						<th class="col-status text-overline">Status</th>
+						<th class="col-id text-overline">Device ID</th>
+						<th class="col-sensors text-overline">Sensors</th>
+						<th class="col-heartbeat text-overline">Last Active</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, device := range devices {
+						@DeviceItem(device)
+					}
+				</tbody>
+			</table>
 		}
 	</div>
 }
 
 templ DeviceItem(device dtos.DeviceStateDto) {
-	<li class="device-item">
-		<span class={ "status-dot", statusDotClass(device.Status) }></span>
-		<span class="device-name font-semibold truncate">{ device.Id }</span>
-		<span class="sensors-group">
-			for _, s := range device.Sensors {
-				<span class="sensor-pill text-caption size-xs">{ s }</span>
-			}
-		</span>
-		<time class="device-heartbeat text-code size-xs" title={ device.HeartbeatISO }>{ device.Heartbeat }</time>
-	</li>
+	<tr class="device-row">
+		<td class="col-status">
+			<span class={ "status-dot", statusDotClass(device.Status) }></span>
+		</td>
+		<td class="col-id">
+			<span class="device-name font-semibold">{ device.Id }</span>
+		</td>
+		<td class="col-sensors">
+			<span class="sensors-group">
+				for _, s := range device.Sensors {
+					<span class="sensor-pill text-caption size-xs">{ s }</span>
+				}
+			</span>
+		</td>
+		<td class="col-heartbeat">
+			<time class="device-heartbeat text-code size-xs" title={ device.HeartbeatISO }>{ device.Heartbeat }</time>
+		</td>
+	</tr>
 }
 
 func statusDotClass(status string) string {

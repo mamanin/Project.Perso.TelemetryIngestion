@@ -46,7 +46,7 @@ func DevicesView(stats []dtos.TileDto, devices []dtos.DeviceStateDto) templ.Comp
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"devices-view\" x-data=\"{ filter: '' }\"><header class=\"page-header\"><div><h1 class=\"page-title\">Devices</h1><p class=\"page-subtitle text-caption\">Telemetry Ingestion Service</p></div></header>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"devices-view\"><header class=\"page-header\"><div><h1 class=\"page-title\">Devices</h1><p class=\"page-subtitle text-caption\">Telemetry Ingestion Service</p></div></header>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -54,7 +54,7 @@ func DevicesView(stats []dtos.TileDto, devices []dtos.DeviceStateDto) templ.Comp
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<input type=\"hidden\" name=\"status\" :value=\"filter\"> <label><input class=\"search-input font-semibold\" type=\"search\" name=\"q\" placeholder=\"Search devices...\" hx-get=\"/devices/search\" hx-trigger=\"keyup changed delay:50ms, filter-changed from:closest article\" hx-target=\"#device-list\" hx-swap=\"outerHTML\" hx-include=\"[name='status']\" hx-sync=\"this:replace\"></label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"list-toolbar\"><div class=\"list-tabs\"><span class=\"list-tab list-tab--active text-caption\">All</span></div><label class=\"search-label\"><input class=\"search-input font-semibold\" type=\"search\" name=\"q\" placeholder=\"Search devices...\" hx-get=\"/devices/search\" hx-trigger=\"keyup changed delay:50ms\" hx-target=\"#device-list\" hx-swap=\"outerHTML\" hx-sync=\"this:replace\"></label></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

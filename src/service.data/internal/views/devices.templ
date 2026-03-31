@@ -7,7 +7,7 @@ import (
 
 templ DevicesView(stats []dtos.TileDto, devices []dtos.DeviceStateDto) {
 	@mainLayout("TIS - Devices") {
-		<article class="devices-view" x-data="{ filter: '' }">
+		<article class="devices-view">
 			<header class="page-header">
 				<div>
 					<h1 class="page-title">Devices</h1>
@@ -15,21 +15,24 @@ templ DevicesView(stats []dtos.TileDto, devices []dtos.DeviceStateDto) {
 				</div>
 			</header>
 			@components.DeviceTiles(stats)
-			<input type="hidden" name="status" :value="filter"/>
-			<label>
-				<input
-					class="search-input font-semibold"
-					type="search"
-					name="q"
-					placeholder="Search devices..."
-					hx-get="/devices/search"
-					hx-trigger="keyup changed delay:50ms, filter-changed from:closest article"
-					hx-target="#device-list"
-					hx-swap="outerHTML"
-					hx-include="[name='status']"
-					hx-sync="this:replace"
-				/>
-			</label>
+			<div class="list-toolbar">
+				<div class="list-tabs">
+					<span class="list-tab list-tab--active text-caption">All</span>
+				</div>
+				<label class="search-label">
+					<input
+						class="search-input font-semibold"
+						type="search"
+						name="q"
+						placeholder="Search devices..."
+						hx-get="/devices/search"
+						hx-trigger="keyup changed delay:50ms"
+						hx-target="#device-list"
+						hx-swap="outerHTML"
+						hx-sync="this:replace"
+					/>
+				</label>
+			</div>
 			@components.DeviceList(devices)
 		</article>
 	}
