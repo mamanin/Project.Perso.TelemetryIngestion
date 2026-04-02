@@ -30,7 +30,7 @@ type TelemetryV2Event struct {
 		Measures []struct {
 			Timestamp int64 `json:"timestamp"`
 			Value     any   `json:"value"`
-		}
+		} `json:"measures"`
 	} `json:"metrics"`
 }
 

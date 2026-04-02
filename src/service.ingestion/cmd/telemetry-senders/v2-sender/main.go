@@ -149,7 +149,7 @@ func generateTelemetries() pkg.TelemetryV2Event {
 			Measures []struct {
 				Timestamp int64 `json:"timestamp"`
 				Value     any   `json:"value"`
-			}
+			} `json:"measures"`
 		}{
 			Name:     g.name,
 			Origin:   g.origin,

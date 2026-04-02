@@ -123,7 +123,7 @@ func easyjson6a975c40DecodeServiceIngestionPkg1(in *jlexer.Lexer, out *Telemetry
 							Measures []struct {
 								Timestamp int64       `json:"timestamp"`
 								Value     interface{} `json:"value"`
-							}
+							} `json:"measures"`
 						}, 0, 0)
 					} else {
 						out.Metrics = []struct {
@@ -133,7 +133,7 @@ func easyjson6a975c40DecodeServiceIngestionPkg1(in *jlexer.Lexer, out *Telemetry
 							Measures []struct {
 								Timestamp int64       `json:"timestamp"`
 								Value     interface{} `json:"value"`
-							}
+							} `json:"measures"`
 						}{}
 					}
 				} else {
@@ -147,7 +147,7 @@ func easyjson6a975c40DecodeServiceIngestionPkg1(in *jlexer.Lexer, out *Telemetry
 						Measures []struct {
 							Timestamp int64       `json:"timestamp"`
 							Value     interface{} `json:"value"`
-						}
+						} `json:"measures"`
 					}
 					easyjson6a975c40Decode(in, &v1)
 					out.Metrics = append(out.Metrics, v1)
@@ -239,7 +239,7 @@ func easyjson6a975c40Decode(in *jlexer.Lexer, out *struct {
 	Measures []struct {
 		Timestamp int64       `json:"timestamp"`
 		Value     interface{} `json:"value"`
-	}
+	} `json:"measures"`
 }) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
@@ -272,7 +272,7 @@ func easyjson6a975c40Decode(in *jlexer.Lexer, out *struct {
 			} else {
 				out.Unit = string(in.String())
 			}
-		case "Measures":
+		case "measures":
 			if in.IsNull() {
 				in.Skip()
 				out.Measures = nil
@@ -321,7 +321,7 @@ func easyjson6a975c40Encode(out *jwriter.Writer, in struct {
 	Measures []struct {
 		Timestamp int64       `json:"timestamp"`
 		Value     interface{} `json:"value"`
-	}
+	} `json:"measures"`
 }) {
 	out.RawByte('{')
 	first := true
@@ -342,7 +342,7 @@ func easyjson6a975c40Encode(out *jwriter.Writer, in struct {
 		out.String(string(in.Unit))
 	}
 	{
-		const prefix string = ",\"Measures\":"
+		const prefix string = ",\"measures\":"
 		out.RawString(prefix)
 		if in.Measures == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 			out.RawString("null")
