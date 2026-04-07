@@ -73,6 +73,19 @@ When looking at the average processing time of the reader and workers, it closel
 
 At this point, I am not sure how to further reduce the processing time to satisfy the formula; increasing the number of workers would likely not help, as the CPU usage is already high — adding more workers might actually slow down the application.
 
+I also considered reducing the batch size to lower processing time. In the publisher service, events are sent to the event hub in a loop because the event hub enforces a maximum batch size. For that reason, I suspected that the bronze layer could be sensitive to batch size and create I/O bottlenecks, since it produces a large number of events for the silver layer.
+
+After checking in more detail, I gathered the following information:
+- Based on the `metric` format, we can expect the size of a single metric to be around `100 bytes`.
+- When sending a message to an event hub, `60 bytes` of overhead are added to the message size.
+- With a Premium or Standard SKU, the maximum batch size is `1MB`.
+- An event received by the bronze layer generates between 35 and 78 metrics per event.
+
+From these values, we can estimate that a batch size of `50 events` is acceptable. It produces between `1.75k` and `3.9k` metrics, which corresponds to roughly `0.28MB` to `0.62MB` per batch—well below the `1MB` maximum. So in this case, reducing the batch size would likely not help.
+
+> [!NOTE]
+> If your events generate a much higher number of metrics, it would be advisable to check the batch size configuration, as it could lead to batches that are too large and cause I/O bottlenecks.
+
 ### Silver layer
 
 ![Silver dashboard](./.attachements/test-no1/dashboard-silver.png)
