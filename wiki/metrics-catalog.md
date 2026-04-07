@@ -1,9 +1,11 @@
+- [Metrics catalog](#metrics-catalog)
+
 # Metrics catalog
 
 > ℹ️ These rules and units are fictional and are only defined for the purpose of this project.
 
 | Source        | Metric name        | Validation rules                                             | Conversion rules  |
-|---------------|--------------------|--------------------------------------------------------------|-------------------|
+| ------------- | ------------------ | ------------------------------------------------------------ | ----------------- |
 | `device`      | `state`            | `on`, `warning`, `error`                                     | ø                 |
 | `device`      | `uptime`           | `0 ≤ x`                                                      | Converts to `s`   |
 | `device`      | `battery_level`    | `0 ≤ x ≤ 100`                                                | Unit must be `%`  |

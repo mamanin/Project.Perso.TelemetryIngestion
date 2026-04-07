@@ -1,3 +1,9 @@
+- [Telemetry formats](#telemetry-formats)
+  - [Metric Format](#metric-format)
+  - [Telemetry v2 format](#telemetry-v2-format)
+  - [Telemetry v1 format](#telemetry-v1-format)
+  - [Telemetry legacy format](#telemetry-legacy-format)
+
 # Telemetry formats
 
 This document defines the telemetry formats expected by the bronze layer of the telemetry ingestion workflow.
@@ -38,12 +44,8 @@ Json schema:
         },
         "v": {
             "anyOf": [
-                {
-                    "type": "string"
-                },
-                {
-                    "type": "number"
-                }
+                { "type": "string" },
+                { "type": "number" }
             ],
             "description": "Value of the metric"
         },
@@ -154,12 +156,8 @@ Json schema:
                                 },
                                 "value": {
                                     "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "number"
-                                        }
+                                        { "type": "string" },
+                                        { "type": "number" }
                                     ],
                                     "description": "Value of the telemetry data point"
                                 }
@@ -276,12 +274,8 @@ Json schema:
                     },
                     "value": {
                         "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "number"
-                            }
+                            { "type": "string" },
+                            { "type": "number" }
                         ],
                         "description": "Value of the telemetry data point"
                     }
