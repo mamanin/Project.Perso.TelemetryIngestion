@@ -205,9 +205,14 @@ module kustoDatabase '../common/modules/kusto.cluster.database.module.bicep' = {
         script: loadTextContent('scripts/telemetries.views.metrics.1d.kql')
       }
       {
-        name: 'create-1-month-view'
+        name: 'create-1-month-metrics-bag-function'
         scriptVersion: 'v1.0.0'
-        script: loadTextContent('scripts/telemetries.views.metrics.1mo.kql')
+        script: loadTextContent('scripts/telemetries.funcs.metrics.1mo.kql')
+      }
+      {
+        name: 'create-1-year-metrics-bag-function'
+        scriptVersion: 'v1.0.0'
+        script: loadTextContent('scripts/telemetries.funcs.metrics.1y.kql')
       }
     ]
   }

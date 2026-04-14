@@ -2,7 +2,7 @@
 // metrics_1d_store :
 //   One day summarize with all intermediate aggregation values.
 //
-//   Hot cache: 365 days
+//   Hot cache: 730 days
 // -----------------------------------------------------------------------
 .create-or-alter materialized-view with (docstring='one day summarize of intermediate aggregation values')
     metrics_1d_store on table metrics_store
@@ -14,7 +14,7 @@
         by startofday(timestamp), device_id, sensor, metric
     }
 
-.alter materialized-view metrics_1d_store policy caching hot = 365d;
+.alter materialized-view metrics_1d_store policy caching hot = 730d;
 
 // -----------------------------------------------------------------------
 // metrics_1d_bag :

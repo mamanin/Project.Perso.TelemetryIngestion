@@ -33,6 +33,7 @@ func NewHandler(logger logger.Logger, redis *redis.Client, publisher messaging.P
 // Handle processes a batch of core.MetricEvent items.
 func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 	metricProcesses := make([]*redis.ItemProcess[core.MetricEvent], 0, len(batch))
+	oldestAccepted := core.RoundFromSeconds(time.Now().Unix(), 86400) // Round to 1 day intervals
 	rp := h.redis.Pipeline()
 
 	for _, event := range batch {
@@ -45,6 +46,10 @@ func (h *Handler) Handle(ctx context.Context, batch []*core.MetricEvent) {
 		mr, ok := rules.Rules[event.Name]
 		if !ok {
 			h.logger.Warn("No metric rules found for metric name: %s", event.Name)
+			continue
+		}
+
+		if event.Timestamp > oldestAccepted {
 			continue
 		}
 

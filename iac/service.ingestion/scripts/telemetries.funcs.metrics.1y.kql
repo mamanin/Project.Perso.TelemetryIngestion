@@ -1,0 +1,23 @@
+// -----------------------------------------------------------------------
+// metrics_1y_bag :
+//   Resolves intermediate aggregation values from metrics_1d_store
+//   into final metric values.
+//
+//   Parameters:
+//     - device_id : the device to filter on
+//     - sensor    : the sensor to filter on (optional)
+// -----------------------------------------------------------------------
+.create-or-alter function with (docstring='resolves yearly aggregated metrics into a bag of telemetry')
+    metrics_1y_bag(deviceId: string, sensorName: string = "")
+ {
+    materialized_view('metrics_1d_store')
+    | where device_id == deviceId
+    | where isempty(sensorName) or sensor == sensorName
+    | summarize
+        avg_value = avgif(avg_value, isnotnull(avg_value)),
+        group_timestamp = arg_max(group_timestamp, value_real, value_string)
+        by startofyear(group_timestamp), device_id, sensor, metric
+    | extend count_on = long(0), count_good = long(0)
+    | invoke  resolve_metrics()
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
+ }

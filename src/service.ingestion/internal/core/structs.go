@@ -64,18 +64,7 @@ func (e *MetricEvent) CacheKey() string {
 	return "service.ingestion:silver:metric.update" +
 		":" + strings.ReplaceAll(e.SensorPath[1:], "/", ":") +
 		":" + e.Name +
-		":" + strconv.FormatInt(roundTo2Minutes(e.Timestamp), 10)
-}
-
-// roundTo2Minutes rounds the given timestamp (in seconds) up to the nearest 2-minute interval.
-func roundTo2Minutes(timestamp int64) int64 {
-	const twoMinutes = int64(120) // 2 minutes = 120 seconds
-	remainder := timestamp % twoMinutes
-
-	if remainder == 0 {
-		return timestamp
-	}
-	return timestamp + (twoMinutes - remainder)
+		":" + strconv.FormatInt(RoundFromSeconds(e.Timestamp, 120), 10) // Round to 2 minute intervals
 }
 
 // MetricRuleProvider contains a list of MetricRules associated with a specific source.

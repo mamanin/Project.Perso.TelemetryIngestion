@@ -1,5 +1,7 @@
 .execute database script <|
 
+// telemetries.tables.metrics.kql
+
 .create-merge table metrics (
     timestamp: datetime,
     device_id: string,
@@ -30,8 +32,8 @@
     unit: string
     );
 
-.alter-merge table metrics_store policy retention softdelete = 1d recoverability = disabled;
-.alter table metrics_store policy caching hot = 1d;
+.alter-merge table metrics_store policy retention softdelete = 3d recoverability = disabled;
+.alter table metrics_store policy caching hot = 1.5d;
 
 .create-or-alter function with (docstring='transform raw metrics into typed columns')
     transform_metrics()
@@ -112,6 +114,8 @@
         )
  }
 
+// telemetries.views.devices.state.kql
+
 .create-or-alter materialized-view with (docstring='last known device status', lookback=1h)
     devices_status on table metrics_store
     {
@@ -151,6 +155,8 @@
         sensors_count = coalesce(array_length(sensors), 0)
  }
 
+// telemetries.views.metrics.10m.kql
+
 .create-or-alter materialized-view with (docstring='ten minute summarize of intermediate aggregation values')
     metrics_10m_store on table metrics_store
     {
@@ -175,6 +181,8 @@
     | invoke  resolve_metrics()
     | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
  }
+
+// telemetries.views.metrics.1h.kql
 
 .create-or-alter materialized-view with (docstring='one hour summarize of intermediate aggregation values')
     metrics_1h_store on table metrics_store
@@ -201,6 +209,8 @@
     | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
  }
 
+// telemetries.views.metrics.1d.kql
+
 .create-or-alter materialized-view with (docstring='one day summarize of intermediate aggregation values')
     metrics_1d_store on table metrics_store
     {
@@ -211,7 +221,7 @@
         by startofday(timestamp), device_id, sensor, metric
     }
 
-.alter materialized-view metrics_1d_store policy caching hot = 365d;
+.alter materialized-view metrics_1d_store policy caching hot = 730d;
 
 .create-or-alter function with (docstring='resolves one day of aggregated metrics into a bag of telemetry')
     metrics_1d_bag(deviceId: string, sensorName: string = "")
@@ -224,24 +234,35 @@
     | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
  }
 
-.create-or-alter materialized-view with (docstring='monthly summarize of intermediate aggregation values')
-    metrics_1mo_store on table metrics_store
-    {
-    metrics_store
-    | summarize
-        avg_value = avgif(value_real, isnotnull(value_real)),
-        group_timestamp = arg_max(timestamp, value_real, value_string)
-        by startofmonth(timestamp), device_id, sensor, metric
-    }
-
-.alter materialized-view metrics_1mo_store policy caching hot = 1095d;
+// telemetries.funcs.metrics.1mo.kql
 
 .create-or-alter function with (docstring='resolves monthly aggregated metrics into a bag of telemetry')
     metrics_1mo_bag(deviceId: string, sensorName: string = "")
  {
-    metrics_1mo_store
+    metrics_1d_store
     | where device_id == deviceId
     | where isempty(sensorName) or sensor == sensorName
+    | summarize
+        avg_value = avgif(avg_value, isnotnull(avg_value)),
+        group_timestamp = arg_max(group_timestamp, value_real, value_string)
+        by startofmonth(group_timestamp), device_id, sensor, metric
+    | extend count_on = long(0), count_good = long(0)
+    | invoke  resolve_metrics()
+    | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor
+ }
+
+// telemetries.funcs.metrics.1y.kql
+
+.create-or-alter function with (docstring='resolves yearly aggregated metrics into a bag of telemetry')
+    metrics_1y_bag(deviceId: string, sensorName: string = "")
+ {
+    metrics_1d_store
+    | where device_id == deviceId
+    | where isempty(sensorName) or sensor == sensorName
+    | summarize
+        avg_value = avgif(avg_value, isnotnull(avg_value)),
+        group_timestamp = arg_max(group_timestamp, value_real, value_string)
+        by startofyear(group_timestamp), device_id, sensor, metric
     | extend count_on = long(0), count_good = long(0)
     | invoke  resolve_metrics()
     | summarize telemetry = make_bag(bag_pack(metric, value)) by group_timestamp, sensor

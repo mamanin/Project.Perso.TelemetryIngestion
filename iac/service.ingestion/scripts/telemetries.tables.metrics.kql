@@ -28,7 +28,7 @@
 //   Contains transformed telemetry events with typed value columns
 //   used by the materialized views.
 //
-//  Retention: 1 day | Hot cache: 1 day
+//  Retention: 3 days | Hot cache: 1.5 days
 // -----------------------------------------------------------------------
 .create-merge table metrics_store (
     timestamp: datetime,
@@ -40,8 +40,8 @@
     unit: string
     );
 
-.alter-merge table metrics_store policy retention softdelete = 1d recoverability = disabled;
-.alter table metrics_store policy caching hot = 1d;
+.alter-merge table metrics_store policy retention softdelete = 3d recoverability = disabled;
+.alter table metrics_store policy caching hot = 1.5d;
 
 // -----------------------------------------------------------------------
 // transform_metrics :
