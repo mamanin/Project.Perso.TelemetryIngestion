@@ -17,6 +17,7 @@
       - [Data retention](#data-retention)
     - [Frontend](#frontend)
   - [Load testing](#load-testing)
+  - [Remarks](#remarks)
 
 # Telemetry ingestion workflow in Go
 
@@ -239,3 +240,13 @@ The main goals of these load tests are to answer the following questions:
 - [Test number 2](./wiki/load-tests/test-no2.md): the for fun test, we are sending it to the moon!!! 🌙
 
 The tests were monitored using Azure Workbooks deployed with Bicep. The workbook templates can be found in the `iac\service.diagnostic\workbooks` folder.
+
+## Remarks
+
+This section contains some remarks and observations I made after working on this project.
+
+> Do not save string telemetries in the ADX !
+
+As defined in the [metrics catalog](./wiki/metrics-catalog.md), some metrics are strings, such as `device.state` or `battery.status`. Having to handle strings and numbers in the ADX adds a lot of complexity to the data structure: we need to store the values of the metrics as `dynamic` in the `metrics` table, then split them into typed columns in the `metrics_store` table.
+
+An alternative approach would be to map string metrics to numbers during the silver refinement process, as they are predictable string metrics. Then we could remap them back to strings after querying the data. This would simplify the data structure, data storage, and querying, as we would only have to deal with numbers.
